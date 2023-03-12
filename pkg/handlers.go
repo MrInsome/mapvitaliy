@@ -4,6 +4,7 @@ import (
 	. "apitraning/internal"
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 func AccountsHandler(repo *Repository) http.HandlerFunc {
@@ -21,6 +22,7 @@ func AccountsHandler(repo *Repository) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			account.Expires = time.Now().Add(time.Hour * 24 * 30)
 			repo.AddAccount(account)
 			w.WriteHeader(http.StatusCreated)
 
@@ -45,17 +47,12 @@ func AccountIntegrationsHandler(repo *Repository) http.HandlerFunc {
 				return
 			}
 		case http.MethodPost:
-			var accountInteg Integration
 			var account Account
-			if err := json.NewDecoder(r.Body).Decode(&accountInteg); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
 			if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			repo.AddIntegration(account.AccountID, accountInteg)
+			//repo.AddIntegration(account.AccountID, account.Integration[])
 			w.WriteHeader(http.StatusCreated)
 
 		default:

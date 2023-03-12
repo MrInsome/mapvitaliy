@@ -1,6 +1,10 @@
 package pkg
 
-import "apitraning/internal"
+import (
+	"apitraning/internal"
+	"fmt"
+	"time"
+)
 
 type Repository struct {
 	accounts map[int]internal.Account
@@ -13,7 +17,9 @@ func NewRepository() *Repository {
 }
 
 func (r *Repository) AddAccount(account internal.Account) {
+	gettingTime := time.Now().Add(time.Hour * 24 * 30)
 	r.accounts[account.AccountID] = account
+	fmt.Println(gettingTime, r.accounts[account.AccountID], account)
 }
 
 func (r *Repository) AddIntegration(accountID int, integration internal.Integration) {
@@ -28,7 +34,7 @@ func (r *Repository) AddIntegration(accountID int, integration internal.Integrat
 func (r *Repository) GetAccountIntegrations(accountID int) map[string]internal.Integration {
 	account, ok := r.accounts[accountID]
 	if !ok {
-		return nil
+		return account.Integration
 	}
 	return account.Integration
 }
