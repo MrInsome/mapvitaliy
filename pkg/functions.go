@@ -2,8 +2,6 @@ package pkg
 
 import (
 	"apitraning/internal"
-	"fmt"
-	"time"
 )
 
 type Repository struct {
@@ -17,9 +15,10 @@ func NewRepository() *Repository {
 }
 
 func (r *Repository) AddAccount(account internal.Account) {
-	gettingTime := time.Now().Add(time.Hour * 24 * 30)
 	r.accounts[account.AccountID] = account
-	fmt.Println(gettingTime, r.accounts[account.AccountID], account)
+}
+func (r *Repository) DelAccount(account internal.Account) {
+	delete(r.accounts, account.AccountID)
 }
 
 func (r *Repository) AddIntegration(accountID int, integration internal.Integration) {
@@ -27,14 +26,42 @@ func (r *Repository) AddIntegration(accountID int, integration internal.Integrat
 	if !ok {
 		return
 	}
-	account.Integration[integration.ClientID] = integration
+	account.Integration = append(account.Integration, integration)
+	r.accounts[accountID] = account
+}
+func (r *Repository) DelIntegration(accountID int, integration internal.Integration) {
+	account, ok := r.accounts[accountID]
+	if !ok {
+		return
+	}
+	for i, el := range account.Integration {
+		if el == integration {
+			account.Integration[i] = account.Integration[len(account.Integration)-1]
+			account.Integration[len(account.Integration)-1] = internal.Integration{}
+			account.Integration = account.Integration[:len(account.Integration)-1]
+		}
+	}
 	r.accounts[accountID] = account
 }
 
-func (r *Repository) GetAccountIntegrations(accountID int) map[string]internal.Integration {
+func (r *Repository) UpdateIntegration(accountID int, integration internal.Integration, replaced internal.Integration) {
 	account, ok := r.accounts[accountID]
 	if !ok {
-		return account.Integration
+		return
+	}
+	for i, el := range account.Integration {
+		if el == integration {
+			account.Integration[i] = replaced
+		}
+	}
+	r.accounts[accountID] = account
+
+}
+
+func (r *Repository) GetAccountIntegrations(accountID int) []internal.Integration {
+	account, ok := r.accounts[accountID]
+	if !ok {
+		return nil
 	}
 	return account.Integration
 }

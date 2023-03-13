@@ -11,21 +11,21 @@ import (
 func main() {
 	repo := NewRepository()
 	//Тестовый аккаунт
-	integration1 := Integration{
+	var integration1 []Integration
+	integration1 = append(integration1, Integration{
 		SecretKey:          "secret_key_1",
 		ClientID:           "client_id_1",
 		RedirectURL:        "randomurl/redirect",
-		AuthenticationCode: "auth_code_1",
-	}
+		AuthenticationCode: "auth_code_1"})
 	account1 := Account{
 		AccessToken:  "access_token_1",
 		RefreshToken: "refresh_token_1",
 		Expires:      time.Now().Add(time.Hour * 24 * 30),
 		AccountID:    1,
-		Integration:  make(map[string]Integration),
+		Integration:  []Integration{},
 	}
 	repo.AddAccount(account1)
-	repo.AddIntegration(account1.AccountID, integration1)
+	repo.AddIntegration(account1.AccountID, integration1[0])
 
 	handler := AccountsHandler(repo)
 	integrationHandler := AccountIntegrationsHandler(repo)

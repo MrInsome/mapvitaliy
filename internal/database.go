@@ -9,7 +9,7 @@ type Account struct {
 	RefreshToken string
 	Expires      time.Time
 	AccountID    int
-	Integration  map[string]Integration
+	Integration  []Integration
 }
 
 type Integration struct {
