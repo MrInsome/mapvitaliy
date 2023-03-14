@@ -4,6 +4,16 @@ import (
 	"apitraning/internal"
 )
 
+type Repo interface {
+	AddAccount(account internal.Account)
+	DelAccount(account internal.Account)
+	AddIntegration(accountID int, integration internal.Integration)
+	DelIntegration(accountID int, integration internal.Integration)
+	UpdateIntegration(accountID int, integration internal.Integration, replaced internal.Integration)
+	GetAccountIntegrations(accountID int) []internal.Integration
+	GetAllAccounts() []internal.Account
+}
+
 type Repository struct {
 	accounts map[int]internal.Account
 }

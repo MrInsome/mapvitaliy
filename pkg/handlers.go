@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func AccountsHandler(repo *Repository) http.HandlerFunc {
+func AccountsHandler(repo Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -48,7 +48,7 @@ func AccountsHandler(repo *Repository) http.HandlerFunc {
 	}
 }
 
-func AccountIntegrationsHandler(repo *Repository) http.HandlerFunc {
+func AccountIntegrationsHandler(repo Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
