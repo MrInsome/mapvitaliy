@@ -33,10 +33,10 @@ func AuthHandler(repo Repo) http.HandlerFunc {
 		w.WriteHeader(http.StatusCreated)
 	}
 }
-func AmoContat(repo *Repository) http.HandlerFunc {
+func AmoContact(repo *Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var parsedContacts ContactsResponse
 		account := repo.GetAccount(1)
-
 		r, err := http.NewRequest("GET", "https://testakkamocrm.amocrm.ru/api/v4/contacts", nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -52,19 +52,16 @@ func AmoContat(repo *Repository) http.HandlerFunc {
 		}
 		defer resp.Body.Close()
 
-		var contacts []Contact
-
-		err = json.NewDecoder(resp.Body).Decode(&contacts)
+		err = json.NewDecoder(resp.Body).Decode(&parsedContacts)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-
-		//err = json.NewEncoder(w).Encode(contacts)
-		//if err != nil {
-		//	return
-		//}
+		err = json.NewEncoder(w).Encode(parsedContacts.Response.Contacts)
+		if err != nil {
+			return
+		}
 
 	}
 }

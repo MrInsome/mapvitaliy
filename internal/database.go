@@ -30,10 +30,11 @@ type DataToAccess struct {
 	RedirectUri  string `json:"redirect_uri"`
 }
 
-type Contact struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
+type ContactsResponse struct {
+	Response struct {
+		Contacts []struct {
+			Name  string `json:"name"`
+			Email string `json:"email"`
+		} `json:"contacts"`
+	} `json:"_embedded"`
 }
