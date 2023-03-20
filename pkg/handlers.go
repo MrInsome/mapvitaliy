@@ -10,15 +10,15 @@ import (
 func AuthHandler(repo Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var respToken TokenResponse
-		var data DataToAccess
+		//var data DataToAccess
 		account := repo.GetAccount(1)
-		data.ClientID = account.Integration[0].ClientID
-		data.ClientSecret = account.Integration[0].SecretKey
-		data.GrantType = "authorization_code"
-		data.Code = account.Integration[0].AuthenticationCode
-		data.RedirectUri = account.Integration[0].RedirectURL
-		repo.AddAuthData(data)
-		a, err := json.Marshal(repo.AuthData())
+		//data.ClientID = account.Integration[0].ClientID
+		//data.ClientSecret = account.Integration[0].SecretKey
+		//data.GrantType = "authorization_code"
+		//data.Code = account.Integration[0].AuthenticationCode
+		//data.RedirectUri = account.Integration[0].RedirectURL
+		repo.AddAuthData(1)
+		a, err := json.Marshal(repo.AuthData(1))
 		resp, err := http.Post("https://testakkamocrm.amocrm.ru/oauth2/access_token",
 			"application/json", bytes.NewBuffer(a))
 		err = json.NewDecoder(resp.Body).Decode(&respToken)
