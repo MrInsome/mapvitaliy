@@ -3,35 +3,45 @@ package main
 import (
 	. "apitraning/internal"
 	. "apitraning/pkg"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"log"
 	"net/http"
 )
 
 func main() {
 	repo := NewRepository()
+	dsn := "steven:here@tcp(127.0.0.1:3306)/fullstack_api?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("Невозможно подключится к БД")
+	}
+
 	//Тестовый аккаунт
 	var integration1 []Integration
 	integration1 = append(integration1, Integration{
-		SecretKey:          "SHYXnIWnNbViplLAS7obxKNZreqWkwemnQ1RFfCz5vvIxdiz9KKtvRinNj6GV9vD",
+		SecretKey:          "q1ZDbVvj8nVvuMQiBemRGRfz9jxDxYBdJnAJHR885tGg7wqbHwQ99EOKNk51EQox",
 		ClientID:           "1c65fcfb-11d0-4bd6-931f-28b4d89892cf",
-		RedirectURL:        "https://907a-212-46-197-210.eu.ngrok.io",
+		RedirectURL:        "https://b028-173-233-147-68.eu.ngrok.io/",
 		AuthenticationCode: "def5020077a662a668d8e24108a7f64ffce1868ed8c5cee21741b6b15bb2da43b587a859501033efced82299f7f3a6e53c8a90d16b9cdaec9b871b1c381dccff4a9d0de7835feb52fd750f8e4241490cb3600cb5dc531cedb7be94ceacb797bcea569b4556187b750bcf1af3e406ef8245da05d3465ce112ef03b3436d956b2a39389408e28c282ab924bd3ab240dc5b20c2f8cbea28166957fc3d0dcecc5ce065a2f05202de53fbb9d9950683a5f76171aba8a374cf43b5f8e53c6c837e9eafcae51dcb1c45ff6b7b4770cefc45c25c530f4ec135a1cb29cb01d2e8e3bf686d6d8d18793f641f8a6cefcf7b4302ceae1d7bb5e00683d23b4059ad3f30af006ee3dc19b25a48ae4593f3d3d45ea1e218d917dd05f0b39576907f1b39fb33d3c39345361bab08895239cd6dbb3443f021fe11033a2a21c683d51ef2f144469f3cf6a2640b7598eca6a9f2645c13187abc54e826fc63497a231c3ffa62f5331c6199cc6d2e9509ddf7a3a24e0ee3c4ee7dacc3d5314c7f7d284e65661254f8c921e013c11d96bec5146db42e22af7ca28e1605425fb05826baca5c574dfc2b086831ce3b1d7ba59799d2400fb9b26a3c00c0793ee4eeeb3274e43bb5c7d3ac28013920f186e5960b4aa0a592b835b9a29549de6056cc0417be830745f92e5f5b22759172166c041c1b"})
+	var contact1 []Contacts
+	contact1 = append(contact1, Contacts{Email: "yalublugolang@amoschool.zbs"})
 	account1 := Account{
-		AccessToken:  "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjA3MTFhMmYwY2Q2NTI3YjViNzYwZGQ2YWRkZTQwYjFmYTUyMmI1NTcwMTdlZmI1MDdkOTI3NjI3Nzc5NzhhMDExYjUyM2FiMWViYTc5ZDM2In0.eyJhdWQiOiIxYzY1ZmNmYi0xMWQwLTRiZDYtOTMxZi0yOGI0ZDg5ODkyY2YiLCJqdGkiOiIwNzExYTJmMGNkNjUyN2I1Yjc2MGRkNmFkZGU0MGIxZmE1MjJiNTU3MDE3ZWZiNTA3ZDkyNzYyNzc3OTc4YTAxMWI1MjNhYjFlYmE3OWQzNiIsImlhdCI6MTY3ODg5NTQ5OCwibmJmIjoxNjc4ODk1NDk4LCJleHAiOjE2Nzg5ODE4OTgsInN1YiI6IjkzNjM3OTQiLCJhY2NvdW50X2lkIjozMDkzMzI1MCwiYmFzZV9kb21haW4iOiJhbW9jcm0ucnUiLCJzY29wZXMiOlsicHVzaF9ub3RpZmljYXRpb25zIiwiZmlsZXMiLCJjcm0iLCJmaWxlc19kZWxldGUiLCJub3RpZmljYXRpb25zIl19.kO4Jzj3ZQrUpgUVEqHjTeKMIheyHOYxRFDDQeHmzxSNeunGVP38NBIIvByi4u7hE8R6K6x2Qo9cOT0T56qRZf_l_zOaebKXW6rnqUSjXqfNadIk0TCySWdceiZEnPl-sfwsxgbrc5tnJYBVY7hq08QZooiM82QsRH-eootvAsc9NTDOMuscCKHZgbA9zzn1-KLhdf28jPP5XaguO9h-1R1-BRjF9jR1BPyb4QHiL_rl4b8wGy_8hGAP9AaCXs4z08x4_Ob3aMmFBQ3W-du_H8nLULb3fjnyq6WiJTs80LRgKRDWH-puKsmcZKkvD30fahY3NOIvy0k3QjUROIc6p1Q",
-		RefreshToken: "def50200e2abd1cde307b564dcf42bfc13d91d35a034852762e35d4a82d4c796f50edd9fc744f99a71ddbaf9f2fb2dee67400d6a11b8c22b8815ed9b22a333615bb0cfed1e3a36f582a54f0c21efd6518db16fdfa9082b4950c7e68e1203c61d89470c08ff28f61a5dcf47abfa283b6f030529869e8c40f779525cd8190a5c11d9de70784367e19e230cb2532bcb790d33fd93e6aa9b38cf9b96fe01b3e9fc164016bff7eb7847ebc34519ff567af98946f3bc84b5dc1056fa58c0a815f1605294cc99976f88d0c13b4a64ad5c2d699cff63c027815586f27c3bf3c988215c394be3782eb53e7da5c03816f0cc34ed0274505ce1f3e4b63436c2002af5d2e2a4a73d719f3a267e9d6eb55612f24f2504df1de5941a9fbe95640f3d72f49fb9783b4155f480826a76ee6d97fe1fd25fcf9ae2455f8661b8e3f0601431b8effa271d6cae4ce516bfb884ec05ba45d90763d03992917fc50719a0f507c8d2d716f032f19c7d378b585cc7a4ce5568d465256c1424ab827ab2d37f8cf44c0eb9109ae5d3703ed793fecd794631dd96941770118f48b3a1702215d6a0f32d8d578811943b7357fe370bc5e4335a8a7efa6a122e610944dcc994d06c950fcc122aa0f74e97c32aa630f494cce14f156e3b8cbea08578b48df0cd4f39858d1a0361510b84",
-		Expires:      86400,
-		AccountID:    1,
-		Integration:  []Integration{},
+		AccountID:   1,
+		Integration: integration1,
+		Contact:     contact1,
 	}
 	repo.AddAccount(account1)
-	repo.AddIntegration(account1.AccountID, integration1[0])
+	//repo.AddIntegration(account1.AccountID, integration1[0])
 
-	handler := AccountsHandler(repo)
-	integrationHandler := AccountIntegrationsHandler(repo)
-	auth := AuthHandler(repo)
-	requestHandler := AmoContact(repo)
+	handler := AccountsHandler(repo, db)
+	integrationHandler := AccountIntegrationsHandler(repo, db)
+	auth := AuthHandler(repo, db)
+	requestHandler := AmoContact(repo, db)
+	getFromIntegration := GetAmoIntegration(repo, db)
 
 	router := http.NewServeMux()
+	router.Handle("/", getFromIntegration)
 	router.Handle("/accounts", handler)
 	router.Handle("/access_token", auth)
 	router.Handle("/request", requestHandler)
@@ -41,6 +51,12 @@ func main() {
 		Addr:    ":8080",
 		Handler: router,
 	}
+
+	err = db.AutoMigrate(&Account{}, &Integration{}, &Contacts{})
+	if err != nil {
+		panic("Невозможно провести миграцию в БД")
+	}
+	db.Create(&account1)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

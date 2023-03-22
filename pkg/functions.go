@@ -8,6 +8,8 @@ type Repo interface {
 	AddAccount(account internal.Account)
 	DelAccount(account internal.Account)
 	GetAccount(accountID int) internal.Account
+	RefererAdd(ref internal.Referer)
+	RefererGet() internal.Referer
 	AddAuthData(accountID int)
 	AuthData(accountID int) internal.DataToAccess
 	AddIntegration(accountID int, integration internal.Integration)
@@ -19,20 +21,25 @@ type Repo interface {
 
 type Repository struct {
 	accounts map[int]internal.Account
+	contacts map[int]internal.Contacts
 	data     map[int]internal.DataToAccess
+	referer  internal.Referer
 }
 
 func NewRepository() *Repository {
 	return &Repository{
 		accounts: make(map[int]internal.Account),
+		contacts: make(map[int]internal.Contacts),
 		data:     make(map[int]internal.DataToAccess),
+		referer:  internal.Referer{},
 	}
 }
-
-func (r *Repository) GetAccount(accountID int) internal.Account {
-	return r.accounts[accountID]
+func (r *Repository) RefererAdd(ref internal.Referer) {
+	r.referer = ref
 }
-
+func (r *Repository) RefererGet() internal.Referer {
+	return r.referer
+}
 func (r *Repository) AddAccount(account internal.Account) {
 	r.accounts[account.AccountID] = account
 }
@@ -104,4 +111,8 @@ func (r *Repository) GetAllAccounts() []internal.Account {
 		accounts = append(accounts, account)
 	}
 	return accounts
+}
+
+func (r *Repository) GetAccount(accountID int) internal.Account {
+	return r.accounts[accountID]
 }
