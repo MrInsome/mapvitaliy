@@ -6,19 +6,20 @@ import (
 	"encoding/json"
 	"gorm.io/gorm"
 	"net/http"
+	"strconv"
 )
 
 func GetAmoIntegration(repo Repo, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var ref Referer
-		account := repo.GetAccount(1)
+		account := repo.GetAccount(CurrentAccount)
 		params := r.URL.Query()
 		if params == nil {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
-		account.Integration[0].AuthenticationCode = params.Get("code")
-		account.Integration[0].ClientID = params.Get("client_id")
+		account.Integration[CurrentIntegration].AuthenticationCode = params.Get("code")
+		account.Integration[CurrentIntegration].ClientID = params.Get("client_id")
 		ref.Referer = params.Get("referer")
 		repo.RefererAdd(ref)
 		repo.AddAccount(account)
@@ -33,9 +34,9 @@ func AuthHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 		case http.MethodPost:
 			var respToken TokenResponse
 			ref := repo.RefererGet()
-			account := repo.GetAccount(1)
-			repo.AddAuthData(1)
-			a, err := json.Marshal(repo.AuthData(1))
+			account := repo.GetAccount(CurrentAccount)
+			repo.AddAuthData(CurrentAccount)
+			a, err := json.Marshal(repo.AuthData(CurrentAccount))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -62,42 +63,40 @@ func AuthHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 
 func AmoContact(repo Repo, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var contacts []Contacts
-		var parsedContacts ContactsResponse
+		var contacts ContactResponce
 		ref := repo.RefererGet()
-		account := repo.GetAccount(1)
-		contacts = account.Contact
-		r, err := http.NewRequest("GET", "https://"+ref.Referer+"/api/v4/contacts", nil)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		account := repo.GetAccount(CurrentAccount)
+		page := 1
+		for {
+			r, err := http.NewRequest("GET", "https://"+ref.Referer+"/api/v4/contacts?limit=1&page="+strconv.Itoa(page), nil)
+			if err != nil {
+				http.Error(w, "Неверный запрос", http.StatusInternalServerError)
+				return
+			}
+			r.Header.Set("Authorization", "Bearer "+account.AccessToken)
+			client := &http.Client{}
+			resp, err := client.Do(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer resp.Body.Close()
+			err = json.NewDecoder(resp.Body).Decode(&contacts)
+			if resp.Body == nil {
+				break
+			}
+			account.Contact = repo.ContactsResponce(contacts)
+			if err != nil {
+				return
+			}
+			repo.AddAccount(account)
+			db.Updates(account)
+			if err != nil {
+				return
+			}
+			page++
 		}
-		r.Header.Set("Authorization", "Bearer "+account.AccessToken)
 
-		client := &http.Client{}
-		resp, err := client.Do(r)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer resp.Body.Close()
-
-		err = json.NewDecoder(resp.Body).Decode(&parsedContacts)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(parsedContacts.Response.Contacts)
-		for _, el := range parsedContacts.Response.Contacts {
-			contacts = append(contacts, Contacts{Email: el.Email})
-		}
-		account.Contact = contacts
-		repo.AddAccount(account)
-		db.Updates(account)
-		if err != nil {
-			return
-		}
 	}
 }
 
@@ -118,7 +117,7 @@ func AccountsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 			}
 			account.Expires = 86400
 			repo.AddAccount(account)
-			db.Updates(account)
+			db.Create(account)
 			w.WriteHeader(http.StatusCreated)
 		case http.MethodPut:
 			var account Account
@@ -136,6 +135,8 @@ func AccountsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			repo.DelAccount(account)
+			db.Delete(account.Integration)
+			db.Delete(account.Contact)
 			db.Delete(account)
 			w.WriteHeader(http.StatusCreated)
 
@@ -170,7 +171,7 @@ func AccountIntegrationsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			var integration Integration
-			integration = account.Integration[0]
+			integration = account.Integration[CurrentIntegration]
 			repo.AddIntegration(account.AccountID, integration)
 			db.Updates(integration)
 			w.WriteHeader(http.StatusCreated)
@@ -196,7 +197,7 @@ func AccountIntegrationsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			var integration Integration
-			integration = account.Integration[0]
+			integration = account.Integration[CurrentIntegration]
 			repo.DelIntegration(account.AccountID, integration)
 			w.WriteHeader(http.StatusCreated)
 

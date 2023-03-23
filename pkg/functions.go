@@ -17,11 +17,15 @@ type Repo interface {
 	UpdateIntegration(accountID int, integration internal.Integration, replaced internal.Integration)
 	GetAccountIntegrations(accountID int) []internal.Integration
 	GetAllAccounts() []internal.Account
+	ContactsResponce(n internal.ContactResponce) []internal.Contacts
+}
+type DB interface {
+	ContactsResponce(n internal.ContactResponce) []internal.Contacts
 }
 
 type Repository struct {
 	accounts map[int]internal.Account
-	contacts map[int]internal.Contacts
+	contacts []internal.Contacts
 	data     map[int]internal.DataToAccess
 	referer  internal.Referer
 }
@@ -29,7 +33,7 @@ type Repository struct {
 func NewRepository() *Repository {
 	return &Repository{
 		accounts: make(map[int]internal.Account),
-		contacts: make(map[int]internal.Contacts),
+		contacts: []internal.Contacts{},
 		data:     make(map[int]internal.DataToAccess),
 		referer:  internal.Referer{},
 	}
@@ -115,4 +119,18 @@ func (r *Repository) GetAllAccounts() []internal.Account {
 
 func (r *Repository) GetAccount(accountID int) internal.Account {
 	return r.accounts[accountID]
+}
+func (r *Repository) ContactsResponce(n internal.ContactResponce) []internal.Contacts {
+	for _, v := range n.Response.Contacts {
+		name := v.Name
+		customFields := v.EmailValues
+		for _, cf := range customFields {
+			if cf.FieldCode == "EMAIL" {
+				if cf.Values[0].Value != "" {
+					r.contacts = append(r.contacts, internal.Contacts{Name: name, Email: cf.Values[0].Value})
+				}
+			}
+		}
+	}
+	return r.contacts
 }

@@ -1,5 +1,8 @@
 package internal
 
+var CurrentAccount = 1
+var CurrentIntegration = 0
+
 type Account struct {
 	AccessToken  string        `json:"access_token"`
 	RefreshToken string        `json:"refresh_token"`
@@ -22,6 +25,7 @@ type Referer struct {
 
 type Contacts struct {
 	AccountID int    `json:"account_id"`
+	Name      string `json:"name"`
 	Email     string `json:"email" gorm:"primaryKey:Email"`
 }
 
@@ -40,14 +44,18 @@ type DataToAccess struct {
 	RedirectUri  string `json:"redirect_uri"`
 }
 
-type ContactsResponse struct {
+type ContactResponce struct {
 	Response struct {
 		Contacts []struct {
-			Name               string `json:"name"`
-			Email              string `json:"email"`
-			CustomFieldsValues []struct {
-				Values []struct {
+			//ID          int    `json:"id"`
+			Name string `json:"name"`
+			//FirstName   string `json:"first_name"`
+			//LastName    string `json:"last_name"`
+			EmailValues []struct {
+				FieldCode string `json:"field_code"`
+				Values    []struct {
 					Value string `json:"value"`
+					//EmailCode string `json:"field_code"`
 				} `json:"values"`
 			} `json:"custom_fields_values"`
 		} `json:"contacts"`
