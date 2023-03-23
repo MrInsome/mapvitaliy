@@ -2,6 +2,10 @@ package pkg
 
 import (
 	"apitraning/internal"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"log"
+	"net/http"
 )
 
 type Repo interface {
@@ -19,8 +23,8 @@ type Repo interface {
 	GetAllAccounts() []internal.Account
 	ContactsResponce(n internal.ContactResponce) []internal.Contacts
 }
-type DB interface {
-	ContactsResponce(n internal.ContactResponce) []internal.Contacts
+type GormDB interface {
+	ConnectGormDB() *gorm.DB
 }
 
 type Repository struct {
@@ -133,4 +137,36 @@ func (r *Repository) ContactsResponce(n internal.ContactResponce) []internal.Con
 		}
 	}
 	return r.contacts
+}
+
+func ConnectGormDB() *gorm.DB {
+	dsn := "steven:here@tcp(127.0.0.1:3306)/fullstack_api?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("Невозможно подключится к БД")
+	}
+	return db
+}
+
+func HttpStart(repo Repo, db *gorm.DB) {
+	handler := AccountsHandler(repo, db)
+	integrationHandler := AccountIntegrationsHandler(repo, db)
+	auth := AuthHandler(repo, db)
+	requestHandler := AmoContact(repo, db)
+	getFromIntegration := GetAmoIntegration(repo, db)
+
+	router := http.NewServeMux()
+	router.Handle("/", getFromIntegration)
+	router.Handle("/accounts", handler)
+	router.Handle("/access_token", auth)
+	router.Handle("/request", requestHandler)
+	router.Handle("/accounts/integrations", integrationHandler)
+
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: router,
+	}
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatal(err)
+	}
 }

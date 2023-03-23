@@ -3,19 +3,11 @@ package main
 import (
 	. "apitraning/internal"
 	. "apitraning/pkg"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-	"log"
-	"net/http"
 )
 
 func main() {
 	repo := NewRepository()
-	dsn := "steven:here@tcp(127.0.0.1:3306)/fullstack_api?charset=utf8mb4&parseTime=True&loc=Local"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		panic("Невозможно подключится к БД")
-	}
+	db := ConnectGormDB()
 
 	//Тестовый аккаунт
 	var integration1 []Integration
@@ -32,32 +24,11 @@ func main() {
 		Contact:     contact1,
 	}
 	repo.AddAccount(account1)
-	//repo.AddIntegration(account1.AccountID, integration1[0])
+	HttpStart(repo, db)
 
-	handler := AccountsHandler(repo, db)
-	integrationHandler := AccountIntegrationsHandler(repo, db)
-	auth := AuthHandler(repo, db)
-	requestHandler := AmoContact(repo, db)
-	getFromIntegration := GetAmoIntegration(repo, db)
-
-	router := http.NewServeMux()
-	router.Handle("/", getFromIntegration)
-	router.Handle("/accounts", handler)
-	router.Handle("/access_token", auth)
-	router.Handle("/request", requestHandler)
-	router.Handle("/accounts/integrations", integrationHandler)
-
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: router,
-	}
-
-	err = db.AutoMigrate(&Account{}, &Integration{}, &Contacts{})
+	err := db.AutoMigrate(&Account{}, &Integration{}, &Contacts{})
 	if err != nil {
 		panic("Невозможно провести миграцию в БД")
 	}
 	db.Create(&account1)
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
-	}
 }
