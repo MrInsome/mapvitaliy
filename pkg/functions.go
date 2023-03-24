@@ -2,9 +2,9 @@ package pkg
 
 import (
 	"apitraning/internal"
-	"gorm.io/driver/mysql"
+	"bytes"
+	"encoding/json"
 	"gorm.io/gorm"
-	"log"
 	"net/http"
 )
 
@@ -21,10 +21,7 @@ type Repo interface {
 	UpdateIntegration(accountID int, integration internal.Integration, replaced internal.Integration)
 	GetAccountIntegrations(accountID int) []internal.Integration
 	GetAllAccounts() []internal.Account
-	ContactsResponce(n internal.ContactResponce) []internal.Contacts
-}
-type GormDB interface {
-	ConnectGormDB() *gorm.DB
+	ContactsResp(n internal.ContactResponce) []internal.Contacts
 }
 
 type Repository struct {
@@ -124,7 +121,7 @@ func (r *Repository) GetAllAccounts() []internal.Account {
 func (r *Repository) GetAccount(accountID int) internal.Account {
 	return r.accounts[accountID]
 }
-func (r *Repository) ContactsResponce(n internal.ContactResponce) []internal.Contacts {
+func (r *Repository) ContactsResp(n internal.ContactResponce) []internal.Contacts {
 	for _, v := range n.Response.Contacts {
 		name := v.Name
 		customFields := v.EmailValues
@@ -139,34 +136,46 @@ func (r *Repository) ContactsResponce(n internal.ContactResponce) []internal.Con
 	return r.contacts
 }
 
-func ConnectGormDB() *gorm.DB {
-	dsn := "steven:here@tcp(127.0.0.1:3306)/fullstack_api?charset=utf8mb4&parseTime=True&loc=Local"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+func GetARTokens(repo Repo, db *gorm.DB, w http.ResponseWriter) {
+	account := repo.GetAccount(internal.CurrentAccount)
+	ref := repo.RefererGet()
+	var respToken internal.TokenResponse
+	repo.AddAuthData(internal.CurrentAccount)
+	a, err := json.Marshal(repo.AuthData(internal.CurrentAccount))
 	if err != nil {
-		panic("Невозможно подключится к БД")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	return db
+	resp, err := http.Post("https://"+ref.Referer+"/oauth2/access_token",
+		"application/json", bytes.NewBuffer(a))
+	err = json.NewDecoder(resp.Body).Decode(&respToken)
+	err = json.NewEncoder(w).Encode(respToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	account.AccessToken = respToken.AccessToken
+	account.RefreshToken = respToken.RefreshToken
+	account.Expires = respToken.ExpiresIn
+	repo.AddAccount(account)
+	db.Updates(account)
 }
 
-func HttpStart(repo Repo, db *gorm.DB) {
-	handler := AccountsHandler(repo, db)
-	integrationHandler := AccountIntegrationsHandler(repo, db)
-	auth := AuthHandler(repo, db)
-	requestHandler := AmoContact(repo, db)
-	getFromIntegration := GetAmoIntegration(repo, db)
+func Router(repo Repo, db *gorm.DB) *http.ServeMux {
+	AdminAlphaTest := AdminAccount(repo, db)
+	Handler := AccountsHandler(repo, db)
+	IntegrationHandler := AccountIntegrationsHandler(repo, db)
+	Auth := AuthHandler(repo, db)
+	RequestHandler := AmoContact(repo, db)
+	GetFromIntegration := FromAMO(repo, db)
 
 	router := http.NewServeMux()
-	router.Handle("/", getFromIntegration)
-	router.Handle("/accounts", handler)
-	router.Handle("/access_token", auth)
-	router.Handle("/request", requestHandler)
-	router.Handle("/accounts/integrations", integrationHandler)
 
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: router,
-	}
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
-	}
+	router.Handle("/vidget", GetFromIntegration)
+	router.Handle("/accounts", Handler)
+	router.Handle("/access_token", Auth)
+	router.Handle("/request", RequestHandler)
+	router.Handle("/accounts/integrations", IntegrationHandler)
+	router.Handle("/start", AdminAlphaTest)
+	return router
 }

@@ -2,29 +2,39 @@ package pkg
 
 import (
 	. "apitraning/internal"
-	"bytes"
 	"encoding/json"
+	"fmt"
 	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 )
 
-func GetAmoIntegration(repo Repo, db *gorm.DB) http.HandlerFunc {
+func FromAMO(repo Repo, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var ref Referer
-		account := repo.GetAccount(CurrentAccount)
-		params := r.URL.Query()
-		if params == nil {
-			w.WriteHeader(http.StatusConflict)
-			return
+		switch r.Method {
+		case http.MethodGet:
+			if r.URL.Query().Get("client_id") != "" {
+				var ref Referer
+				account := repo.GetAccount(CurrentAccount)
+				params := r.URL.Query()
+				if params == nil {
+					w.WriteHeader(http.StatusConflict)
+					return
+				}
+				account.Integration[CurrentIntegration].AuthenticationCode = params.Get("code")
+				account.Integration[CurrentIntegration].ClientID = params.Get("client_id")
+				ref.Referer = params.Get("referer")
+				repo.RefererAdd(ref)
+				repo.AddAccount(account)
+				db.Updates(account)
+				GetARTokens(repo, db, w)
+			}
+		case http.MethodPost:
+			if r.URL.Query().Get("unisender_key") != "" {
+				UniKey = r.URL.Query().Get("unisender_key")
+				fmt.Println(UniKey)
+			}
 		}
-		account.Integration[CurrentIntegration].AuthenticationCode = params.Get("code")
-		account.Integration[CurrentIntegration].ClientID = params.Get("client_id")
-		ref.Referer = params.Get("referer")
-		repo.RefererAdd(ref)
-		repo.AddAccount(account)
-		db.Updates(account)
-		w.WriteHeader(http.StatusCreated)
 	}
 }
 
@@ -32,29 +42,7 @@ func AuthHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
-			var respToken TokenResponse
-			ref := repo.RefererGet()
-			account := repo.GetAccount(CurrentAccount)
-			repo.AddAuthData(CurrentAccount)
-			a, err := json.Marshal(repo.AuthData(CurrentAccount))
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			resp, err := http.Post("https://"+ref.Referer+"/oauth2/access_token",
-				"application/json", bytes.NewBuffer(a))
-			err = json.NewDecoder(resp.Body).Decode(&respToken)
-			err = json.NewEncoder(w).Encode(respToken)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			account.AccessToken = respToken.AccessToken
-			account.RefreshToken = respToken.RefreshToken
-			account.Expires = respToken.ExpiresIn
-			repo.AddAccount(account)
-			w.WriteHeader(http.StatusCreated)
-			db.Updates(account)
+			GetARTokens(repo, db, w)
 		default:
 			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
 		}
@@ -85,7 +73,7 @@ func AmoContact(repo Repo, db *gorm.DB) http.HandlerFunc {
 			if resp.Body == nil {
 				break
 			}
-			account.Contact = repo.ContactsResponce(contacts)
+			account.Contact = repo.ContactsResp(contacts)
 			if err != nil {
 				return
 			}
@@ -96,7 +84,6 @@ func AmoContact(repo Repo, db *gorm.DB) http.HandlerFunc {
 			}
 			page++
 		}
-
 	}
 }
 
@@ -115,7 +102,6 @@ func AccountsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			account.Expires = 86400
 			repo.AddAccount(account)
 			db.Create(account)
 			w.WriteHeader(http.StatusCreated)
@@ -135,9 +121,10 @@ func AccountsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			repo.DelAccount(account)
-			db.Delete(account.Integration)
-			db.Delete(account.Contact)
+			db.Where("account_id = ?", account.AccountID).Delete(&Contacts{})
+			db.Where("account_id = ?", account.AccountID).Delete(&Integration{})
 			db.Delete(account)
+
 			w.WriteHeader(http.StatusCreated)
 
 		default:
@@ -207,4 +194,27 @@ func AccountIntegrationsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 
 	}
 
+}
+
+func AdminAccount(repo Repo, db *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		default:
+			var integration1 []Integration
+			integration1 = append(integration1, Integration{
+				SecretKey:          "SffuYBpoDSTUZi0rtW5LPSoJQVV5086bIMScyeSjGyRx9d25ozlUNv0ubLWrkDHj",
+				ClientID:           "",
+				RedirectURL:        "https://71b5-173-233-147-68.eu.ngrok.io/vidget",
+				AuthenticationCode: ""})
+			var contact1 []Contacts
+			contact1 = append(contact1, Contacts{Email: "yalublugolang@amoschool.zbs"})
+			account1 := Account{
+				AccountID:   1,
+				Integration: integration1,
+				Contact:     contact1,
+			}
+			repo.AddAccount(account1)
+			db.Create(&account1)
+		}
+	}
 }
