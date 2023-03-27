@@ -2,9 +2,11 @@ package pkg
 
 import (
 	. "apitraning/internal"
-	. "apitraning/internal/config"
-	. "apitraning/internal/types"
+	"apitraning/internal/config"
+	"apitraning/internal/types"
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"gorm.io/gorm"
 	"net/http"
 	"strconv"
@@ -25,19 +27,37 @@ func FromAMOVidget(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 				account.Integration[CurrentIntegration].AuthenticationCode = params.Get("code")
 				account.Integration[CurrentIntegration].ClientID = params.Get("client_id")
 				ref.Referer = params.Get("referer")
-				repo.RefererAdd(ref)
+				repo.RefererAdd(types.Referer(ref))
 				repo.AddAccount(account)
 				db.Updates(account)
 				GetARTokens(repo, db, w)
-			}
-		case http.MethodPost:
-			if r.URL.Query().Get("unisender_key") != "" {
-				UniKey = r.URL.Query().Get("unisender_key")
 			}
 		}
 	}
 }
 
+func UnisenKey(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			var account Account
+			account = repo.GetAccount(CurrentAccount)
+			err := r.ParseForm()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			account.UniKey = r.FormValue("unisender_key")
+			repo.AddAccount(account)
+			db.Updates(account)
+			w.WriteHeader(http.StatusCreated)
+		default:
+			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
+		}
+
+	}
+
+}
 func AuthHandler(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -73,7 +93,7 @@ func AmoContact(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 			if resp.Body == nil {
 				break
 			}
-			account.Contacts = repo.ContactsResp(contacts)
+			account.Contacts = repo.ContactsResp(types.ContactResponce(contacts))
 			if err != nil {
 				return
 			}
@@ -196,15 +216,52 @@ func AccountIntegrationsHandler(repo AccountIntegration, db *gorm.DB) http.Handl
 
 }
 
+func UnisenderImport(repo AccountIntegration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		account := repo.GetAccount(config.CurrentAccount)
+		data := map[string]interface{}{
+			"data": [][]interface{}{},
+		}
+		var datain []interface{}
+		//{Name: el.Name,Email: el.Email}
+		for _, el := range account.Contacts {
+			datain = append(datain, el.Name, el.Email)
+		}
+		data["data"] = append([][]interface{}{}, datain)
+		data["field_names"] = []string{"name", "email"}
+		a, err := json.Marshal(data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		url := fmt.Sprintf("https://api.unisender.com/ru/api/importContacts?format=json&"+
+			"api_key=%s", account.UniKey)
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(a))
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+		var result map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		err = json.NewEncoder(w).Encode(result)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func AdminAccount(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		default:
 			var integration1 []Integration
 			integration1 = append(integration1, Integration{
-				SecretKey:          "SffuYBpoDSTUZi0rtW5LPSoJQVV5086bIMScyeSjGyRx9d25ozlUNv0ubLWrkDHj",
+				SecretKey:          "d4792m2G9nX5hQHDTUJbkfCsimT4E7WT8emJ0E1QfdCY5gAXkJd2k2122lNzGBad",
 				ClientID:           "",
-				RedirectURL:        "https://9fac-128-0-131-163.eu.ngrok.io/vidget",
+				RedirectURL:        "https://4a11-173-233-147-68.eu.ngrok.io/vidget",
 				AuthenticationCode: ""})
 			var contact1 []Contacts
 			contact1 = append(contact1, Contacts{Email: "yalublugolang@amoschool.zbs"})

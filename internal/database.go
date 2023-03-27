@@ -1,18 +1,16 @@
 package internal
 
-import "gorm.io/gorm"
-
 type Account struct {
 	AccessToken  string        `json:"access_token"`
 	RefreshToken string        `json:"refresh_token"`
 	Expires      int           `json:"expires"`
+	UniKey       string        `json:"unisender_key"`
 	AccountID    int           `json:"account_id" gorm:"primaryKey:AccountID"`
 	Integration  []Integration `gorm:"foreignKey:AccountID"`
 	Contacts     []Contacts    `gorm:"foreignKey:AccountID"`
 }
 
 type Integration struct {
-	gorm.Model
 	AccountID          int    `json:"account_id"`
 	SecretKey          string `json:"secret_key" gorm:"primaryKey:SecretKey"`
 	ClientID           string `json:"client_id"`
@@ -21,7 +19,6 @@ type Integration struct {
 }
 
 type Contacts struct {
-	gorm.Model
 	AccountID int    `json:"account_id"`
 	ContactID int    `json:"contactID"`
 	Name      string `json:"name"`

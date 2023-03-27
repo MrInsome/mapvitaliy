@@ -2,7 +2,6 @@ package main
 
 import (
 	. "apitraning/internal"
-	. "apitraning/internal/config"
 	. "apitraning/pkg"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -27,10 +26,7 @@ func main() {
 	if err != nil {
 		panic("Невозможно провести миграцию в БД")
 	}
-	db.Find(&Account{})
-	db.Find(&Integration{})
-	db.Find(&Contacts{})
-	AdminAccount(repo, db)
+	repo.SynchronizeDB(db)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

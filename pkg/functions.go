@@ -8,14 +8,15 @@ import (
 	"encoding/json"
 	"gorm.io/gorm"
 	"net/http"
+	"net/mail"
 )
 
 type Repository struct {
-	accounts map[int]internal.Account
-	contacts []internal.Contacts
-	data     map[int]types.DataToAccess
-	referer  types.Referer
-	db       *gorm.DB
+	accounts     map[int]internal.Account
+	integrations []internal.Integration
+	contacts     []internal.Contacts
+	data         map[int]types.DataToAccess
+	referer      types.Referer
 }
 
 func NewRepository() *Repository {
@@ -116,12 +117,33 @@ func (r *Repository) ContactsResp(n types.ContactResponce) []internal.Contacts {
 		for _, cf := range customFields {
 			if cf.FieldCode == "EMAIL" {
 				if cf.Values[0].Value != "" {
-					r.contacts = append(r.contacts, internal.Contacts{Name: name, Email: cf.Values[0].Value})
+					_, err := mail.ParseAddress(cf.Values[0].Value)
+					if err == nil {
+						r.contacts = append(r.contacts, internal.Contacts{Name: name, Email: cf.Values[0].Value})
+					}
 				}
 			}
 		}
 	}
 	return r.contacts
+}
+
+func (r *Repository) SynchronizeDB(db *gorm.DB) {
+	var account []internal.Account
+	var contacts []internal.Contacts
+	var integrations []internal.Integration
+	db.Find(&account)
+	for i, el := range account {
+		db.Where("account_id = ?", el.AccountID).Find(&integrations)
+		account[i].Integration = integrations
+		db.Where("account_id = ?", el.AccountID).Find(&contacts)
+		account[i].Contacts = contacts
+		r.AddAccount(account[i])
+	}
+	db.Find(&contacts)
+	db.Find(&integrations)
+	r.contacts = contacts
+	r.integrations = integrations
 }
 
 func GetARTokens(repo AccountAuth, db *gorm.DB, w http.ResponseWriter) {
@@ -156,6 +178,8 @@ func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
 	Auth := AuthHandler(repo, db)
 	RequestHandler := AmoContact(repo, db)
 	GetFromAmoVidget := FromAMOVidget(repo, db)
+	FromAmoUniKey := UnisenKey(repo, db)
+	ImportUni := UnisenderImport(repo)
 
 	router := http.NewServeMux()
 
@@ -165,5 +189,7 @@ func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
 	router.Handle("/request", RequestHandler)
 	router.Handle("/accounts/integrations", IntegrationHandler)
 	router.Handle("/start", AdminAlphaTest)
+	router.Handle("/vidget/unisender", FromAmoUniKey)
+	router.Handle("/import", ImportUni)
 	return router
 }

@@ -3,6 +3,7 @@ package pkg
 import (
 	"apitraning/internal"
 	"apitraning/internal/types"
+	"gorm.io/gorm"
 )
 
 type AccountRepo interface {
@@ -11,6 +12,7 @@ type AccountRepo interface {
 	DelAccount(account internal.Account)
 	GetAccountIntegrations(accountID int) []internal.Integration
 	GetAllAccounts() []internal.Account
+	SynchronizeDB(db *gorm.DB)
 }
 
 type RefererRepo interface {
