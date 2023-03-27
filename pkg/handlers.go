@@ -2,14 +2,15 @@ package pkg
 
 import (
 	. "apitraning/internal"
+	. "apitraning/internal/config"
+	. "apitraning/internal/types"
 	"encoding/json"
-	"fmt"
 	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 )
 
-func FromAMO(repo Repo, db *gorm.DB) http.HandlerFunc {
+func FromAMOVidget(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -32,13 +33,12 @@ func FromAMO(repo Repo, db *gorm.DB) http.HandlerFunc {
 		case http.MethodPost:
 			if r.URL.Query().Get("unisender_key") != "" {
 				UniKey = r.URL.Query().Get("unisender_key")
-				fmt.Println(UniKey)
 			}
 		}
 	}
 }
 
-func AuthHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
+func AuthHandler(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -49,7 +49,7 @@ func AuthHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 	}
 }
 
-func AmoContact(repo Repo, db *gorm.DB) http.HandlerFunc {
+func AmoContact(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var contacts ContactResponce
 		ref := repo.RefererGet()
@@ -73,7 +73,7 @@ func AmoContact(repo Repo, db *gorm.DB) http.HandlerFunc {
 			if resp.Body == nil {
 				break
 			}
-			account.Contact = repo.ContactsResp(contacts)
+			account.Contacts = repo.ContactsResp(contacts)
 			if err != nil {
 				return
 			}
@@ -87,7 +87,7 @@ func AmoContact(repo Repo, db *gorm.DB) http.HandlerFunc {
 	}
 }
 
-func AccountsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
+func AccountsHandler(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -133,7 +133,7 @@ func AccountsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 	}
 }
 
-func AccountIntegrationsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
+func AccountIntegrationsHandler(repo AccountIntegration, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -196,7 +196,7 @@ func AccountIntegrationsHandler(repo Repo, db *gorm.DB) http.HandlerFunc {
 
 }
 
-func AdminAccount(repo Repo, db *gorm.DB) http.HandlerFunc {
+func AdminAccount(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		default:
@@ -204,14 +204,14 @@ func AdminAccount(repo Repo, db *gorm.DB) http.HandlerFunc {
 			integration1 = append(integration1, Integration{
 				SecretKey:          "SffuYBpoDSTUZi0rtW5LPSoJQVV5086bIMScyeSjGyRx9d25ozlUNv0ubLWrkDHj",
 				ClientID:           "",
-				RedirectURL:        "https://71b5-173-233-147-68.eu.ngrok.io/vidget",
+				RedirectURL:        "https://9fac-128-0-131-163.eu.ngrok.io/vidget",
 				AuthenticationCode: ""})
 			var contact1 []Contacts
 			contact1 = append(contact1, Contacts{Email: "yalublugolang@amoschool.zbs"})
 			account1 := Account{
 				AccountID:   1,
 				Integration: integration1,
-				Contact:     contact1,
+				Contacts:    contact1,
 			}
 			repo.AddAccount(account1)
 			db.Create(&account1)

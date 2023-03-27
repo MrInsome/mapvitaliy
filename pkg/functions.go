@@ -2,47 +2,35 @@ package pkg
 
 import (
 	"apitraning/internal"
+	"apitraning/internal/config"
+	"apitraning/internal/types"
 	"bytes"
 	"encoding/json"
 	"gorm.io/gorm"
 	"net/http"
 )
 
-type Repo interface {
-	AddAccount(account internal.Account)
-	DelAccount(account internal.Account)
-	GetAccount(accountID int) internal.Account
-	RefererAdd(ref internal.Referer)
-	RefererGet() internal.Referer
-	AddAuthData(accountID int)
-	AuthData(accountID int) internal.DataToAccess
-	AddIntegration(accountID int, integration internal.Integration)
-	DelIntegration(accountID int, integration internal.Integration)
-	UpdateIntegration(accountID int, integration internal.Integration, replaced internal.Integration)
-	GetAccountIntegrations(accountID int) []internal.Integration
-	GetAllAccounts() []internal.Account
-	ContactsResp(n internal.ContactResponce) []internal.Contacts
-}
-
 type Repository struct {
 	accounts map[int]internal.Account
 	contacts []internal.Contacts
-	data     map[int]internal.DataToAccess
-	referer  internal.Referer
+	data     map[int]types.DataToAccess
+	referer  types.Referer
+	db       *gorm.DB
 }
 
 func NewRepository() *Repository {
 	return &Repository{
 		accounts: make(map[int]internal.Account),
 		contacts: []internal.Contacts{},
-		data:     make(map[int]internal.DataToAccess),
-		referer:  internal.Referer{},
+		data:     make(map[int]types.DataToAccess),
+		referer:  types.Referer{},
 	}
 }
-func (r *Repository) RefererAdd(ref internal.Referer) {
+
+func (r *Repository) RefererAdd(ref types.Referer) {
 	r.referer = ref
 }
-func (r *Repository) RefererGet() internal.Referer {
+func (r *Repository) RefererGet() types.Referer {
 	return r.referer
 }
 func (r *Repository) AddAccount(account internal.Account) {
@@ -52,7 +40,7 @@ func (r *Repository) DelAccount(account internal.Account) {
 	delete(r.accounts, account.AccountID)
 }
 func (r *Repository) AddAuthData(accountID int) {
-	var data internal.DataToAccess
+	var data types.DataToAccess
 	data.ClientID = r.accounts[accountID].Integration[0].ClientID
 	data.ClientSecret = r.accounts[accountID].Integration[0].SecretKey
 	data.GrantType = "authorization_code"
@@ -61,7 +49,7 @@ func (r *Repository) AddAuthData(accountID int) {
 	r.data[accountID] = data
 }
 
-func (r *Repository) AuthData(accountID int) internal.DataToAccess {
+func (r *Repository) AuthData(accountID int) types.DataToAccess {
 	return r.data[accountID]
 }
 
@@ -121,7 +109,7 @@ func (r *Repository) GetAllAccounts() []internal.Account {
 func (r *Repository) GetAccount(accountID int) internal.Account {
 	return r.accounts[accountID]
 }
-func (r *Repository) ContactsResp(n internal.ContactResponce) []internal.Contacts {
+func (r *Repository) ContactsResp(n types.ContactResponce) []internal.Contacts {
 	for _, v := range n.Response.Contacts {
 		name := v.Name
 		customFields := v.EmailValues
@@ -136,12 +124,12 @@ func (r *Repository) ContactsResp(n internal.ContactResponce) []internal.Contact
 	return r.contacts
 }
 
-func GetARTokens(repo Repo, db *gorm.DB, w http.ResponseWriter) {
-	account := repo.GetAccount(internal.CurrentAccount)
+func GetARTokens(repo AccountAuth, db *gorm.DB, w http.ResponseWriter) {
+	account := repo.GetAccount(config.CurrentAccount)
 	ref := repo.RefererGet()
-	var respToken internal.TokenResponse
-	repo.AddAuthData(internal.CurrentAccount)
-	a, err := json.Marshal(repo.AuthData(internal.CurrentAccount))
+	var respToken types.TokenResponse
+	repo.AddAuthData(config.CurrentAccount)
+	a, err := json.Marshal(repo.AuthData(config.CurrentAccount))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -161,17 +149,17 @@ func GetARTokens(repo Repo, db *gorm.DB, w http.ResponseWriter) {
 	db.Updates(account)
 }
 
-func Router(repo Repo, db *gorm.DB) *http.ServeMux {
+func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
 	AdminAlphaTest := AdminAccount(repo, db)
 	Handler := AccountsHandler(repo, db)
 	IntegrationHandler := AccountIntegrationsHandler(repo, db)
 	Auth := AuthHandler(repo, db)
 	RequestHandler := AmoContact(repo, db)
-	GetFromIntegration := FromAMO(repo, db)
+	GetFromAmoVidget := FromAMOVidget(repo, db)
 
 	router := http.NewServeMux()
 
-	router.Handle("/vidget", GetFromIntegration)
+	router.Handle("/vidget", GetFromAmoVidget)
 	router.Handle("/accounts", Handler)
 	router.Handle("/access_token", Auth)
 	router.Handle("/request", RequestHandler)

@@ -1,4 +1,4 @@
-package internal
+package config
 
 var CurrentAccount = 1
 var CurrentIntegration = 0

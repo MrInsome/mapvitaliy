@@ -1,4 +1,4 @@
-package internal
+package types
 
 type Referer struct {
 	Referer string `json:"referer"`
@@ -9,6 +9,7 @@ type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
+
 type DataToAccess struct {
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
@@ -16,6 +17,7 @@ type DataToAccess struct {
 	Code         string `json:"code"`
 	RedirectUri  string `json:"redirect_uri"`
 }
+
 type ContactResponce struct {
 	Response struct {
 		Contacts []struct {
