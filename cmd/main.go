@@ -27,6 +27,9 @@ func main() {
 	if err != nil {
 		panic("Невозможно провести миграцию в БД")
 	}
+	db.Find(&Account{})
+	db.Find(&Integration{})
+	db.Find(&Contacts{})
 	AdminAccount(repo, db)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
