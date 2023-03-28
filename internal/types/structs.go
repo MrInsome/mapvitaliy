@@ -35,3 +35,9 @@ type ContactResponce struct {
 		} `json:"contacts"`
 	} `json:"_embedded"`
 }
+
+type JsonDec struct {
+	//JsonError
+}
+type JsonEnc struct {
+}
