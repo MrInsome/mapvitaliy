@@ -9,6 +9,9 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"net/mail"
+	"net/url"
+	"strconv"
+	"strings"
 )
 
 type Repository struct {
@@ -169,6 +172,30 @@ func GetARTokens(repo AccountAuth, db *gorm.DB, w http.ResponseWriter) {
 	account.Expires = respToken.ExpiresIn
 	repo.AddAccount(account)
 	db.Updates(account)
+}
+func importUni(apiKey string, repo AccountRepo) error {
+	var account internal.Account
+	account = repo.GetAccount(config.CurrentAccount)
+	contacts := account.Contacts
+	apiUrl := "https://api.unisender.com/ru/api/importContacts"
+	data := url.Values{}
+	data.Set("format", "json")
+	data.Set("api_key", apiKey)
+	data.Set("field_names[0]", "email")
+	data.Set("field_names[1]", "Name")
+
+	for i, el := range contacts {
+		data.Set("data["+strconv.Itoa(i)+"][0]", el.Email)
+		data.Set("data["+strconv.Itoa(i)+"][1]", el.Name)
+	}
+
+	resp, err := http.Post(apiUrl, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
 }
 
 func Router(repo *Repository, db *gorm.DB) *http.ServeMux {

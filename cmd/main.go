@@ -2,6 +2,7 @@ package main
 
 import (
 	. "apitraning/internal"
+	. "apitraning/internal/config"
 	. "apitraning/pkg"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

@@ -4,9 +4,7 @@ import (
 	. "apitraning/internal"
 	"apitraning/internal/config"
 	"apitraning/internal/types"
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"gorm.io/gorm"
 	"net/http"
 	"strconv"
@@ -17,15 +15,15 @@ func FromAMOVidget(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 		switch r.Method {
 		case http.MethodGet:
 			if r.URL.Query().Get("client_id") != "" {
-				var ref Referer
-				account := repo.GetAccount(CurrentAccount)
+				var ref types.Referer
+				account := repo.GetAccount(config.CurrentAccount)
 				params := r.URL.Query()
 				if params == nil {
 					w.WriteHeader(http.StatusConflict)
 					return
 				}
-				account.Integration[CurrentIntegration].AuthenticationCode = params.Get("code")
-				account.Integration[CurrentIntegration].ClientID = params.Get("client_id")
+				account.Integration[config.CurrentIntegration].AuthenticationCode = params.Get("code")
+				account.Integration[config.CurrentIntegration].ClientID = params.Get("client_id")
 				ref.Referer = params.Get("referer")
 				repo.RefererAdd(types.Referer(ref))
 				repo.AddAccount(account)
@@ -41,7 +39,7 @@ func UnisenKey(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
 		switch r.Method {
 		case http.MethodPost:
 			var account Account
-			account = repo.GetAccount(CurrentAccount)
+			account = repo.GetAccount(config.CurrentAccount)
 			err := r.ParseForm()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -71,9 +69,9 @@ func AuthHandler(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
 
 func AmoContact(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var contacts ContactResponce
+		var contacts types.ContactResponce
 		ref := repo.RefererGet()
-		account := repo.GetAccount(CurrentAccount)
+		account := repo.GetAccount(config.CurrentAccount)
 		page := 1
 		for {
 			r, err := http.NewRequest("GET", "https://"+ref.Referer+"/api/v4/contacts?limit=1&page="+strconv.Itoa(page), nil)
@@ -178,7 +176,7 @@ func AccountIntegrationsHandler(repo AccountIntegration, db *gorm.DB) http.Handl
 				return
 			}
 			var integration Integration
-			integration = account.Integration[CurrentIntegration]
+			integration = account.Integration[config.CurrentIntegration]
 			repo.AddIntegration(account.AccountID, integration)
 			db.Updates(integration)
 			w.WriteHeader(http.StatusCreated)
@@ -204,7 +202,7 @@ func AccountIntegrationsHandler(repo AccountIntegration, db *gorm.DB) http.Handl
 				return
 			}
 			var integration Integration
-			integration = account.Integration[CurrentIntegration]
+			integration = account.Integration[config.CurrentIntegration]
 			repo.DelIntegration(account.AccountID, integration)
 			w.WriteHeader(http.StatusCreated)
 
@@ -218,37 +216,11 @@ func AccountIntegrationsHandler(repo AccountIntegration, db *gorm.DB) http.Handl
 
 func UnisenderImport(repo AccountIntegration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		account := repo.GetAccount(config.CurrentAccount)
-		data := map[string]interface{}{
-			"data": [][]interface{}{},
-		}
-		var datain []interface{}
-		//{Name: el.Name,Email: el.Email}
-		for _, el := range account.Contacts {
-			datain = append(datain, el.Name, el.Email)
-		}
-		data["data"] = append([][]interface{}{}, datain)
-		data["field_names"] = []string{"name", "email"}
-		a, err := json.Marshal(data)
+		var account Account
+		account = repo.GetAccount(config.CurrentAccount)
+		err := importUni(account.UniKey, repo)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		url := fmt.Sprintf("https://api.unisender.com/ru/api/importContacts?format=json&"+
-			"api_key=%s", account.UniKey)
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(a))
-		req.Header.Set("Content-Type", "application/json")
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer resp.Body.Close()
-		var result map[string]interface{}
-		err = json.NewDecoder(resp.Body).Decode(&result)
-		err = json.NewEncoder(w).Encode(result)
-		if err != nil {
-			panic(err)
+			http.Error(w, "Ошибка импорта", http.StatusInternalServerError)
 		}
 	}
 }
@@ -259,9 +231,9 @@ func AdminAccount(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 		default:
 			var integration1 []Integration
 			integration1 = append(integration1, Integration{
-				SecretKey:          "d4792m2G9nX5hQHDTUJbkfCsimT4E7WT8emJ0E1QfdCY5gAXkJd2k2122lNzGBad",
+				SecretKey:          config.SecretKey,
 				ClientID:           "",
-				RedirectURL:        "https://4a11-173-233-147-68.eu.ngrok.io/vidget",
+				RedirectURL:        "https://240f-128-0-131-163.eu.ngrok.io/vidget",
 				AuthenticationCode: ""})
 			var contact1 []Contacts
 			contact1 = append(contact1, Contacts{Email: "yalublugolang@amoschool.zbs"})
