@@ -44,12 +44,13 @@ func (r *Repository) DelAccount(account internal.Account) {
 	delete(r.accounts, account.AccountID)
 }
 func (r *Repository) AddAuthData(accountID int) {
-	var data types.DataToAccess
-	data.ClientID = r.accounts[accountID].Integration[0].ClientID
-	data.ClientSecret = r.accounts[accountID].Integration[0].SecretKey
-	data.GrantType = "authorization_code"
-	data.Code = r.accounts[accountID].Integration[0].AuthenticationCode
-	data.RedirectUri = r.accounts[accountID].Integration[0].RedirectURL
+	data := types.DataToAccess{
+		ClientID:     r.accounts[accountID].Integration[0].ClientID,
+		ClientSecret: r.accounts[accountID].Integration[0].SecretKey,
+		GrantType:    "authorization_code",
+		Code:         r.accounts[accountID].Integration[0].AuthenticationCode,
+		RedirectUri:  r.accounts[accountID].Integration[0].RedirectURL,
+	}
 	r.data[accountID] = data
 }
 
@@ -115,6 +116,7 @@ func (r *Repository) GetAccount(accountID int) internal.Account {
 }
 func (r *Repository) ContactsResp(n types.ContactResponce) []internal.Contacts {
 	for _, v := range n.Response.Contacts {
+		id := v.ID
 		name := v.Name
 		customFields := v.EmailValues
 		for _, cf := range customFields {
@@ -122,7 +124,7 @@ func (r *Repository) ContactsResp(n types.ContactResponce) []internal.Contacts {
 				if cf.Values[0].Value != "" {
 					_, err := mail.ParseAddress(cf.Values[0].Value)
 					if err == nil {
-						r.contacts = append(r.contacts, internal.Contacts{Name: name, Email: cf.Values[0].Value})
+						r.contacts = append(r.contacts, internal.Contacts{Name: name, ContactID: id, Email: cf.Values[0].Value})
 					}
 				}
 			}
@@ -193,18 +195,19 @@ func importUni(apiKey string, repo AccountRepo) error {
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
 
 	return nil
 }
 
 func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
-	AdminAlphaTest := AdminAccount(repo, db)
+	//AdminAlphaTest := AdminAccount(repo, db)
 	Handler := AccountsHandler(repo, db)
 	IntegrationHandler := AccountIntegrationsHandler(repo, db)
 	Auth := AuthHandler(repo, db)
 	RequestHandler := AmoContact(repo, db)
-	GetFromAmoVidget := FromAMOVidget(repo, db)
+	GetFromAmoVidget := FromAMOVidget(repo)
 	FromAmoUniKey := UnisenKey(repo, db)
 	ImportUni := UnisenderImport(repo)
 
@@ -215,7 +218,7 @@ func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
 	router.Handle("/access_token", Auth)
 	router.Handle("/request", RequestHandler)
 	router.Handle("/accounts/integrations", IntegrationHandler)
-	router.Handle("/start", AdminAlphaTest)
+	//router.Handle("/start", AdminAlphaTest)
 	router.Handle("/vidget/unisender", FromAmoUniKey)
 	router.Handle("/import", ImportUni)
 	return router

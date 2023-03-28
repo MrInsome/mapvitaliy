@@ -10,25 +10,33 @@ import (
 	"strconv"
 )
 
-func FromAMOVidget(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
+func FromAMOVidget(repo AccountRefer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			if r.URL.Query().Get("client_id") != "" {
-				var ref types.Referer
-				account := repo.GetAccount(config.CurrentAccount)
-				params := r.URL.Query()
-				if params == nil {
-					w.WriteHeader(http.StatusConflict)
-					return
+				if config.CurrentAccount == 1 {
+					var ref types.Referer
+					var account Account
+					params := r.URL.Query()
+					if params == nil {
+						w.WriteHeader(http.StatusConflict)
+						return
+					}
+					var integration []Integration
+					integration = append(integration, Integration{
+						SecretKey:          config.SecretKey,
+						ClientID:           params.Get("client_id"),
+						RedirectURL:        config.RedirectURL,
+						AuthenticationCode: params.Get("code")})
+					account = Account{
+						AccountID:   1,
+						Integration: integration,
+					}
+					ref.Referer = params.Get("referer")
+					repo.RefererAdd(ref)
+					repo.AddAccount(account)
 				}
-				account.Integration[config.CurrentIntegration].AuthenticationCode = params.Get("code")
-				account.Integration[config.CurrentIntegration].ClientID = params.Get("client_id")
-				ref.Referer = params.Get("referer")
-				repo.RefererAdd(types.Referer(ref))
-				repo.AddAccount(account)
-				db.Updates(account)
-				GetARTokens(repo, db, w)
 			}
 		}
 	}
@@ -38,17 +46,25 @@ func UnisenKey(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
-			var account Account
-			account = repo.GetAccount(config.CurrentAccount)
+			var blinkAcc Account
+			blinkAcc = repo.GetAccount(1)
 			err := r.ParseForm()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			account.UniKey = r.FormValue("unisender_key")
-			repo.AddAccount(account)
-			db.Updates(account)
-			w.WriteHeader(http.StatusCreated)
+			id, err := strconv.Atoi(r.FormValue("account_id"))
+			if id != config.CurrentAccount {
+				account := Account{
+					AccountID:   id,
+					UniKey:      r.FormValue("unisender_key"),
+					Integration: blinkAcc.Integration,
+				}
+				config.CurrentAccount = id
+				repo.AddAccount(account)
+				db.Create(account)
+				GetARTokens(repo, db, w)
+			}
 		default:
 			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
 		}
@@ -91,7 +107,7 @@ func AmoContact(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 			if resp.Body == nil {
 				break
 			}
-			account.Contacts = repo.ContactsResp(types.ContactResponce(contacts))
+			account.Contacts = repo.ContactsResp(contacts)
 			if err != nil {
 				return
 			}
@@ -222,28 +238,29 @@ func UnisenderImport(repo AccountIntegration) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, "Ошибка импорта", http.StatusInternalServerError)
 		}
+
 	}
 }
 
-func AdminAccount(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		default:
-			var integration1 []Integration
-			integration1 = append(integration1, Integration{
-				SecretKey:          config.SecretKey,
-				ClientID:           "",
-				RedirectURL:        "https://240f-128-0-131-163.eu.ngrok.io/vidget",
-				AuthenticationCode: ""})
-			var contact1 []Contacts
-			contact1 = append(contact1, Contacts{Email: "yalublugolang@amoschool.zbs"})
-			account1 := Account{
-				AccountID:   1,
-				Integration: integration1,
-				Contacts:    contact1,
-			}
-			repo.AddAccount(account1)
-			db.Create(&account1)
-		}
-	}
-}
+//func AdminAccount(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
+//	return func(w http.ResponseWriter, r *http.Request) {
+//		switch r.Method {
+//		default:
+//			var integration1 []Integration
+//			integration1 = append(integration1, Integration{
+//				SecretKey:          config.SecretKey,
+//				ClientID:           "",
+//				RedirectURL:        config.RedirectURL,
+//				AuthenticationCode: ""})
+//			var contact1 []Contacts
+//			contact1 = append(contact1, Contacts{Email: "yalublugolang@amoschool.zbs"})
+//			account1 := Account{
+//				AccountID:   1,
+//				Integration: integration1,
+//				Contacts:    contact1,
+//			}
+//			repo.AddAccount(account1)
+//			db.Create(&account1)
+//		}
+//	}
+//}

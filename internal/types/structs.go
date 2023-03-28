@@ -21,7 +21,7 @@ type DataToAccess struct {
 type ContactResponce struct {
 	Response struct {
 		Contacts []struct {
-			//ID   int    `json:"id"`
+			ID   int    `json:"id"`
 			Name string `json:"name"`
 			//FirstName   string `json:"first_name"`
 			//LastName    string `json:"last_name"`
@@ -34,10 +34,4 @@ type ContactResponce struct {
 			} `json:"custom_fields_values"`
 		} `json:"contacts"`
 	} `json:"_embedded"`
-}
-
-type JsonDec struct {
-	//JsonError
-}
-type JsonEnc struct {
 }
