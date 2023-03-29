@@ -6,6 +6,7 @@ import (
 	"apitraning/internal/types"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"gorm.io/gorm"
 	"net/http"
 	"net/mail"
@@ -20,14 +21,16 @@ type Repository struct {
 	contacts     []internal.Contacts
 	data         map[int]types.DataToAccess
 	referer      types.Referer
+	db           *gorm.DB
 }
 
 func NewRepository() *Repository {
 	return &Repository{
-		accounts: make(map[int]internal.Account),
-		contacts: []internal.Contacts{},
-		data:     make(map[int]types.DataToAccess),
-		referer:  types.Referer{},
+		accounts:     make(map[int]internal.Account),
+		integrations: []internal.Integration{},
+		contacts:     []internal.Contacts{},
+		data:         make(map[int]types.DataToAccess),
+		referer:      types.Referer{},
 	}
 }
 
@@ -132,6 +135,22 @@ func (r *Repository) ContactsResp(n types.ContactResponce) []internal.Contacts {
 	}
 	return r.contacts
 }
+func (r *Repository) UnsubscribeAccount(db *gorm.DB, accountID int) error {
+	account := r.accounts[accountID]
+	if account.AccountID == 0 {
+		return fmt.Errorf("")
+	}
+	r.DelAccount(account)
+	db.Where("account_id = ?", account.AccountID).Delete(&internal.Contacts{})
+	db.Where("account_id = ?", account.AccountID).Delete(&internal.Integration{})
+	db.Delete(account)
+	config.CurrentAccount = 1
+	return nil
+}
+
+func (r *Repository) ReturnDB() *gorm.DB {
+	return r.db
+}
 
 func (r *Repository) SynchronizeDB(db *gorm.DB) {
 	var account []internal.Account
@@ -201,14 +220,14 @@ func importUni(apiKey string, repo AccountRepo) error {
 	return nil
 }
 
-func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
+func Router(repo *Repository) *http.ServeMux {
 	//AdminAlphaTest := AdminAccount(repo, db)
-	Handler := AccountsHandler(repo, db)
-	IntegrationHandler := AccountIntegrationsHandler(repo, db)
-	Auth := AuthHandler(repo, db)
-	RequestHandler := AmoContact(repo, db)
+	Handler := AccountsHandler(repo, repo.db)
+	IntegrationHandler := AccountIntegrationsHandler(repo, repo.db)
+	Auth := AuthHandler(repo, repo.db)
+	RequestHandler := AmoContact(repo, repo.db)
 	GetFromAmoVidget := FromAMOVidget(repo)
-	FromAmoUniKey := UnisenKey(repo, db)
+	FromAmoUniKey := UnisenKey(repo, repo.db)
 	ImportUni := UnisenderImport(repo)
 
 	router := http.NewServeMux()

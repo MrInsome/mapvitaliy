@@ -14,6 +14,10 @@ type AccountRepo interface {
 	GetAllAccounts() []internal.Account
 	SynchronizeDB(db *gorm.DB)
 }
+type GormDB interface {
+	SynchronizeDB(db *gorm.DB)
+	ReturnDB() *gorm.DB
+}
 
 type RefererRepo interface {
 	RefererAdd(ref types.Referer)
@@ -34,6 +38,10 @@ type ContactRepo interface {
 type AuthRepo interface {
 	AddAuthData(accountID int)
 	AuthData(accountID int) types.DataToAccess
+}
+
+type Unsubscribe interface {
+	UnsubscribeAccount(db *gorm.DB, accountID int) error
 }
 
 type AccountIntegration interface {

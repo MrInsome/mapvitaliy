@@ -158,7 +158,6 @@ func AccountsHandler(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 			db.Where("account_id = ?", account.AccountID).Delete(&Contacts{})
 			db.Where("account_id = ?", account.AccountID).Delete(&Integration{})
 			db.Delete(account)
-
 			w.WriteHeader(http.StatusCreated)
 
 		default:
