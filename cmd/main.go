@@ -17,7 +17,7 @@ func main() {
 		panic("Невозможно подключится к БД")
 	}
 
-	router := Router(repo)
+	router := Router(repo, db)
 
 	server := &http.Server{
 		Addr:    ":8080",
@@ -28,7 +28,7 @@ func main() {
 		panic("Невозможно провести миграцию в БД")
 	}
 	repo.SynchronizeDB(db)
-	//OpenGRPC()
+	go OpenGRPC()
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

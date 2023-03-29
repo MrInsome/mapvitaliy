@@ -1,15 +1,13 @@
 syntax = "proto3";
 
-package api;
-
 import "google/protobuf/empty.proto";
 
 option go_package = "./api";
 
-message Account {
+message AccountRequest {
   int32 account_id = 1;
 }
 
 service UnsubscribeService {
-  rpc Unsubscribe(Account) returns (google.protobuf.Empty);
+  rpc Unsubscribe(AccountRequest) returns (google.protobuf.Empty);
 }

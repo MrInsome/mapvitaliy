@@ -220,14 +220,14 @@ func importUni(apiKey string, repo AccountRepo) error {
 	return nil
 }
 
-func Router(repo *Repository) *http.ServeMux {
+func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
 	//AdminAlphaTest := AdminAccount(repo, db)
-	Handler := AccountsHandler(repo, repo.db)
-	IntegrationHandler := AccountIntegrationsHandler(repo, repo.db)
-	Auth := AuthHandler(repo, repo.db)
-	RequestHandler := AmoContact(repo, repo.db)
+	Handler := AccountsHandler(repo, db)
+	IntegrationHandler := AccountIntegrationsHandler(repo, db)
+	Auth := AuthHandler(repo, db)
+	RequestHandler := AmoContact(repo, db)
 	GetFromAmoVidget := FromAMOVidget(repo)
-	FromAmoUniKey := UnisenKey(repo, repo.db)
+	FromAmoUniKey := UnisenKey(repo, db)
 	ImportUni := UnisenderImport(repo)
 
 	router := http.NewServeMux()
