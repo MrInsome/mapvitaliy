@@ -5,7 +5,6 @@ import (
 	"apitraning/internal/config"
 	"apitraning/internal/types"
 	"encoding/json"
-	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 )
@@ -42,12 +41,12 @@ func FromAMOVidget(repo AccountRefer) http.HandlerFunc {
 	}
 }
 
-func UnisenKey(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
+func UnisenKey(repo AccountAuth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
 			var blinkAcc Account
-			blinkAcc = repo.GetAccount(1)
+			blinkAcc, _ = repo.GetAccount(1)
 			err := r.ParseForm()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -62,8 +61,12 @@ func UnisenKey(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
 				}
 				config.CurrentAccount = id
 				repo.AddAccount(account)
-				db.Create(account)
-				GetARTokens(repo, db, w)
+				repo.DBReturn().Create(account)
+				err = GetARTokens(repo, repo.DBReturn(), w)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 			}
 		default:
 			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
@@ -72,22 +75,26 @@ func UnisenKey(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
 	}
 
 }
-func AuthHandler(repo AccountAuth, db *gorm.DB) http.HandlerFunc {
+func AuthHandler(repo AccountAuth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
-			GetARTokens(repo, db, w)
+			GetARTokens(repo, repo.DBReturn(), w)
 		default:
 			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
 		}
 	}
 }
 
-func AmoContact(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
+func AmoContact(repo AccountRefer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var contacts types.ContactResponce
 		ref := repo.RefererGet()
-		account := repo.GetAccount(config.CurrentAccount)
+		account, err := repo.GetAccount(config.CurrentAccount)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		page := 1
 		for {
 			r, err := http.NewRequest("GET", "https://"+ref.Referer+"/api/v4/contacts?limit=1&page="+strconv.Itoa(page), nil)
@@ -112,7 +119,7 @@ func AmoContact(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			repo.AddAccount(account)
-			db.Updates(account)
+			repo.DBReturn().Updates(account)
 			if err != nil {
 				return
 			}
@@ -121,7 +128,7 @@ func AmoContact(repo AccountRefer, db *gorm.DB) http.HandlerFunc {
 	}
 }
 
-func AccountsHandler(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
+func AccountsHandler(repo AccountRepo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -137,7 +144,7 @@ func AccountsHandler(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			repo.AddAccount(account)
-			db.Create(account)
+			repo.DBReturn().Create(account)
 			w.WriteHeader(http.StatusCreated)
 		case http.MethodPut:
 			var account Account
@@ -146,7 +153,7 @@ func AccountsHandler(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			repo.AddAccount(account)
-			db.Updates(account)
+			repo.DBReturn().Updates(account)
 			w.WriteHeader(http.StatusCreated)
 		case http.MethodDelete:
 			var account Account
@@ -155,9 +162,9 @@ func AccountsHandler(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			repo.DelAccount(account)
-			db.Where("account_id = ?", account.AccountID).Delete(&Contacts{})
-			db.Where("account_id = ?", account.AccountID).Delete(&Integration{})
-			db.Delete(account)
+			repo.DBReturn().Where("account_id = ?", account.AccountID).Delete(&Contacts{})
+			repo.DBReturn().Where("account_id = ?", account.AccountID).Delete(&Integration{})
+			repo.DBReturn().Delete(account)
 			w.WriteHeader(http.StatusCreated)
 
 		default:
@@ -166,7 +173,7 @@ func AccountsHandler(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
 	}
 }
 
-func AccountIntegrationsHandler(repo AccountIntegration, db *gorm.DB) http.HandlerFunc {
+func AccountIntegrationsHandler(repo AccountIntegration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -193,7 +200,7 @@ func AccountIntegrationsHandler(repo AccountIntegration, db *gorm.DB) http.Handl
 			var integration Integration
 			integration = account.Integration[config.CurrentIntegration]
 			repo.AddIntegration(account.AccountID, integration)
-			db.Updates(integration)
+			repo.DBReturn().Updates(integration)
 			w.WriteHeader(http.StatusCreated)
 		case http.MethodPut:
 			var account Account
@@ -231,35 +238,15 @@ func AccountIntegrationsHandler(repo AccountIntegration, db *gorm.DB) http.Handl
 
 func UnisenderImport(repo AccountIntegration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var account Account
-		account = repo.GetAccount(config.CurrentAccount)
-		err := importUni(account.UniKey, repo)
+		account, err := repo.GetAccount(config.CurrentAccount)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = importUni(account.UniKey, repo)
 		if err != nil {
 			http.Error(w, "Ошибка импорта", http.StatusInternalServerError)
 		}
 
 	}
 }
-
-//func AdminAccount(repo AccountRepo, db *gorm.DB) http.HandlerFunc {
-//	return func(w http.ResponseWriter, r *http.Request) {
-//		switch r.Method {
-//		default:
-//			var integration1 []Integration
-//			integration1 = append(integration1, Integration{
-//				SecretKey:          config.SecretKey,
-//				ClientID:           "",
-//				RedirectURL:        config.RedirectURL,
-//				AuthenticationCode: ""})
-//			var contact1 []Contacts
-//			contact1 = append(contact1, Contacts{Email: "yalublugolang@amoschool.zbs"})
-//			account1 := Account{
-//				AccountID:   1,
-//				Integration: integration1,
-//				Contacts:    contact1,
-//			}
-//			repo.AddAccount(account1)
-//			db.Create(&account1)
-//		}
-//	}
-//}

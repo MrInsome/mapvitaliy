@@ -1,25 +1,22 @@
-package pkg
+package api
 
 import (
-	"apitraning/pkg/api"
+	"apitraning/pkg"
 	"context"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"gorm.io/gorm"
 	"log"
 	"net"
 )
 
 type serverStruct struct {
-	repository *Repository
-	db         *gorm.DB
-	api.UnsubscribeServiceServer
+	repository *pkg.Repository
+	UnsubscribeServiceServer
 }
 
-func (s *serverStruct) Unsubscribe(ctx context.Context, account *api.AccountRequest) (*emptypb.Empty, error) {
-	db := s.db
-	r := &Repository{}
-	err := r.UnsubscribeAccount(db, int(account.AccountId))
+func (s *serverStruct) Unsubscribe(ctx context.Context, account *AccountRequest) (*emptypb.Empty, error) {
+	r, err := s.repository.GetAccount(int(account.AccountId))
+	err = s.repository.UnsubscribeAccount(s.repository.DBReturn(), r.AccountID)
 	if err != nil {
 		return &emptypb.Empty{}, err
 	}
@@ -33,7 +30,7 @@ func OpenGRPC() {
 	}
 	s := grpc.NewServer()
 	srv := &serverStruct{}
-	api.RegisterUnsubscribeServiceServer(s, srv)
+	RegisterUnsubscribeServiceServer(s, srv)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("%v", err)
 	}

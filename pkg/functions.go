@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"net/http"
 	"net/mail"
@@ -48,11 +49,11 @@ func (r *Repository) DelAccount(account internal.Account) {
 }
 func (r *Repository) AddAuthData(accountID int) {
 	data := types.DataToAccess{
-		ClientID:     r.accounts[accountID].Integration[0].ClientID,
-		ClientSecret: r.accounts[accountID].Integration[0].SecretKey,
+		ClientID:     r.accounts[accountID].Integration[config.CurrentIntegration].ClientID,
+		ClientSecret: r.accounts[accountID].Integration[config.CurrentIntegration].SecretKey,
 		GrantType:    "authorization_code",
-		Code:         r.accounts[accountID].Integration[0].AuthenticationCode,
-		RedirectUri:  r.accounts[accountID].Integration[0].RedirectURL,
+		Code:         r.accounts[accountID].Integration[config.CurrentIntegration].AuthenticationCode,
+		RedirectUri:  r.accounts[accountID].Integration[config.CurrentIntegration].RedirectURL,
 	}
 	r.data[accountID] = data
 }
@@ -114,9 +115,13 @@ func (r *Repository) GetAllAccounts() []internal.Account {
 	return accounts
 }
 
-func (r *Repository) GetAccount(accountID int) internal.Account {
-	return r.accounts[accountID]
+func (r *Repository) GetAccount(accountID int) (internal.Account, error) {
+	if accountID >= len(r.accounts) {
+		return internal.Account{}, fmt.Errorf("Aккаунт %d не найден в нашей системе", accountID)
+	}
+	return r.accounts[accountID], nil
 }
+
 func (r *Repository) ContactsResp(n types.ContactResponce) []internal.Contacts {
 	for _, v := range n.Response.Contacts {
 		id := v.ID
@@ -147,9 +152,21 @@ func (r *Repository) UnsubscribeAccount(db *gorm.DB, accountID int) error {
 	config.CurrentAccount = 1
 	return nil
 }
-
-func (r *Repository) ReturnDB() *gorm.DB {
+func (r *Repository) DBReturn() *gorm.DB {
 	return r.db
+}
+
+func (r *Repository) GormOpen() {
+	db, err := gorm.Open(mysql.Open(config.Dsn), &gorm.Config{})
+	if err != nil {
+		panic("Невозможно подключится к БД")
+	}
+	r.db = db
+	err = r.db.AutoMigrate(&internal.Account{}, &internal.Integration{}, &internal.Contacts{})
+	if err != nil {
+		panic("Невозможно провести миграцию в БД")
+	}
+	r.SynchronizeDB(r.db)
 }
 
 func (r *Repository) SynchronizeDB(db *gorm.DB) {
@@ -170,15 +187,19 @@ func (r *Repository) SynchronizeDB(db *gorm.DB) {
 	r.integrations = integrations
 }
 
-func GetARTokens(repo AccountAuth, db *gorm.DB, w http.ResponseWriter) {
-	account := repo.GetAccount(config.CurrentAccount)
+func GetARTokens(repo AccountAuth, db *gorm.DB, w http.ResponseWriter) error {
+	account, err := repo.GetAccount(config.CurrentAccount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
 	ref := repo.RefererGet()
 	var respToken types.TokenResponse
 	repo.AddAuthData(config.CurrentAccount)
 	a, err := json.Marshal(repo.AuthData(config.CurrentAccount))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	resp, err := http.Post("https://"+ref.Referer+"/oauth2/access_token",
 		"application/json", bytes.NewBuffer(a))
@@ -186,17 +207,20 @@ func GetARTokens(repo AccountAuth, db *gorm.DB, w http.ResponseWriter) {
 	err = json.NewEncoder(w).Encode(respToken)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	account.AccessToken = respToken.AccessToken
 	account.RefreshToken = respToken.RefreshToken
 	account.Expires = respToken.ExpiresIn
 	repo.AddAccount(account)
 	db.Updates(account)
+	return err
 }
 func importUni(apiKey string, repo AccountRepo) error {
-	var account internal.Account
-	account = repo.GetAccount(config.CurrentAccount)
+	account, err := repo.GetAccount(config.CurrentAccount)
+	if err != nil {
+		return err
+	}
 	contacts := account.Contacts
 	apiUrl := "https://api.unisender.com/ru/api/importContacts"
 	data := url.Values{}
@@ -220,14 +244,13 @@ func importUni(apiKey string, repo AccountRepo) error {
 	return nil
 }
 
-func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
-	//AdminAlphaTest := AdminAccount(repo, db)
-	Handler := AccountsHandler(repo, db)
-	IntegrationHandler := AccountIntegrationsHandler(repo, db)
-	Auth := AuthHandler(repo, db)
-	RequestHandler := AmoContact(repo, db)
+func Router(repo *Repository) *http.ServeMux {
+	Handler := AccountsHandler(repo)
+	IntegrationHandler := AccountIntegrationsHandler(repo)
+	Auth := AuthHandler(repo)
+	RequestHandler := AmoContact(repo)
 	GetFromAmoVidget := FromAMOVidget(repo)
-	FromAmoUniKey := UnisenKey(repo, db)
+	FromAmoUniKey := UnisenKey(repo)
 	ImportUni := UnisenderImport(repo)
 
 	router := http.NewServeMux()
@@ -237,7 +260,6 @@ func Router(repo *Repository, db *gorm.DB) *http.ServeMux {
 	router.Handle("/access_token", Auth)
 	router.Handle("/request", RequestHandler)
 	router.Handle("/accounts/integrations", IntegrationHandler)
-	//router.Handle("/start", AdminAlphaTest)
 	router.Handle("/vidget/unisender", FromAmoUniKey)
 	router.Handle("/import", ImportUni)
 	return router
