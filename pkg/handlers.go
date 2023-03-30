@@ -5,8 +5,11 @@ import (
 	"apitraning/internal/config"
 	"apitraning/internal/types"
 	"encoding/json"
+	"fmt"
+	"github.com/beanstalkd/go-beanstalk"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func FromAMOVidget(repo AccountRefer) http.HandlerFunc {
@@ -37,6 +40,19 @@ func FromAMOVidget(repo AccountRefer) http.HandlerFunc {
 					repo.AddAccount(account)
 				}
 			}
+		default:
+			conn2, _ := beanstalk.Dial("tcp", "127.0.0.1:11300")
+			for a := 0; a < 10; a++ {
+				id, body, _ := conn2.Reserve(5 * time.Second)
+				idjb, _ := conn2.Put([]byte("Job +"), 1, 10, 100*time.Second)
+				conn2.Delete(id)
+				fmt.Fprintf(w, string(body)+"\n")
+				fmt.Fprintf(w, strconv.Itoa(int(id))+" "+strconv.Itoa(int(idjb))+"\n")
+			}
+			id, body, _ := conn2.Reserve(5 * time.Second)
+			fmt.Fprintf(w, string(body)+"\n"+strconv.Itoa(int(id)))
+			conn2.Close()
+
 		}
 	}
 }

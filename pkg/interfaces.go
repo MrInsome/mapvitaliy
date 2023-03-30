@@ -4,6 +4,7 @@ import (
 	"apitraning/internal"
 	"apitraning/internal/types"
 	"gorm.io/gorm"
+	"time"
 )
 
 type AccountRepo interface {
@@ -26,6 +27,14 @@ type RefererRepo interface {
 	RefererGet() types.Referer
 }
 
+type BStalk interface {
+	NewBeanstalkConn() (*BeanstalkConn, error)
+	Close() error
+	Put(body []byte, priority uint32, delay, ttr time.Duration) (uint64, error)
+	Delete(id uint64) error
+	Reserve(ttr time.Duration) (id uint64, body []byte, err error)
+}
+
 type IntegrationRepo interface {
 	AddIntegration(accountID int, integration internal.Integration)
 	GetAccountIntegrations(accountID int) []internal.Integration
@@ -45,7 +54,7 @@ type AuthRepo interface {
 }
 
 type Unsubscribe interface {
-	UnsubscribeAccount(db *gorm.DB, accountID int) error
+	UnsubscribeAccount(accountID int) error
 }
 
 type AccountIntegration interface {
@@ -60,6 +69,7 @@ type AccountRefer interface {
 	RefererRepo
 	ContactRepo
 	AccountAuth
+	//BStalk
 }
 
 type AccountAuth interface {

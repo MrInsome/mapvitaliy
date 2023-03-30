@@ -15,7 +15,7 @@ func main() {
 		Addr:    ":8080",
 		Handler: router,
 	}
-	go OpenGRPC()
+	go OpenGRPC(repo)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

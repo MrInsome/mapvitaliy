@@ -4,33 +4,32 @@ import (
 	"apitraning/pkg"
 	"context"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net"
 )
 
 type serverStruct struct {
-	repository *pkg.Repository
-	UnsubscribeServiceServer
+	UnimplementedAccountServiceServer
+	*pkg.Repository
+	accountServiceClient
 }
 
-func (s *serverStruct) Unsubscribe(ctx context.Context, account *AccountRequest) (*emptypb.Empty, error) {
-	r, err := s.repository.GetAccount(int(account.AccountId))
-	err = s.repository.UnsubscribeAccount(s.repository.DBReturn(), r.AccountID)
+func (s *serverStruct) Unsubscribe(ctx context.Context, req *UnsubscribeRequest) (*UnsubscribeResponse, error) {
+	err := s.UnsubscribeAccount(int(req.AccountId))
 	if err != nil {
-		return &emptypb.Empty{}, err
+		return &UnsubscribeResponse{Success: false}, nil
 	}
-	return &emptypb.Empty{}, nil
+	return &UnsubscribeResponse{Success: true}, nil
 }
 
-func OpenGRPC() {
+func OpenGRPC(r *pkg.Repository) {
 	lis, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
 	s := grpc.NewServer()
-	srv := &serverStruct{}
-	RegisterUnsubscribeServiceServer(s, srv)
+	srv := &serverStruct{UnimplementedAccountServiceServer{}, r, accountServiceClient{}}
+	RegisterAccountServiceServer(s, srv)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("%v", err)
 	}
