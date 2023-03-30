@@ -8,7 +8,6 @@ package api
 
 import (
 	context "context"
-	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -19,86 +18,86 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// UnsubscribeServiceClient is the client API for UnsubscribeService service.
+// AccountServiceClient is the client API for AccountService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type UnsubscribeServiceClient interface {
-	Unsubscribe(ctx context.Context, in *AccountRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+type AccountServiceClient interface {
+	Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*UnsubscribeResponse, error)
 }
 
-type unsubscribeServiceClient struct {
+type accountServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewUnsubscribeServiceClient(cc grpc.ClientConnInterface) UnsubscribeServiceClient {
-	return &unsubscribeServiceClient{cc}
+func NewAccountServiceClient(cc grpc.ClientConnInterface) AccountServiceClient {
+	return &accountServiceClient{cc}
 }
 
-func (c *unsubscribeServiceClient) Unsubscribe(ctx context.Context, in *AccountRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/UnsubscribeService/Unsubscribe", in, out, opts...)
+func (c *accountServiceClient) Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*UnsubscribeResponse, error) {
+	out := new(UnsubscribeResponse)
+	err := c.cc.Invoke(ctx, "/AccountService/Unsubscribe", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// UnsubscribeServiceServer is the server API for UnsubscribeService service.
-// All implementations must embed UnimplementedUnsubscribeServiceServer
+// AccountServiceServer is the server API for AccountService service.
+// All implementations must embed UnimplementedAccountServiceServer
 // for forward compatibility
-type UnsubscribeServiceServer interface {
-	Unsubscribe(context.Context, *AccountRequest) (*empty.Empty, error)
-	mustEmbedUnimplementedUnsubscribeServiceServer()
+type AccountServiceServer interface {
+	Unsubscribe(context.Context, *UnsubscribeRequest) (*UnsubscribeResponse, error)
+	mustEmbedUnimplementedAccountServiceServer()
 }
 
-// UnimplementedUnsubscribeServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedUnsubscribeServiceServer struct {
+// UnimplementedAccountServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedAccountServiceServer struct {
 }
 
-func (UnimplementedUnsubscribeServiceServer) Unsubscribe(context.Context, *AccountRequest) (*empty.Empty, error) {
+func (UnimplementedAccountServiceServer) Unsubscribe(context.Context, *UnsubscribeRequest) (*UnsubscribeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unsubscribe not implemented")
 }
-func (UnimplementedUnsubscribeServiceServer) mustEmbedUnimplementedUnsubscribeServiceServer() {}
+func (UnimplementedAccountServiceServer) mustEmbedUnimplementedAccountServiceServer() {}
 
-// UnsafeUnsubscribeServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to UnsubscribeServiceServer will
+// UnsafeAccountServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AccountServiceServer will
 // result in compilation errors.
-type UnsafeUnsubscribeServiceServer interface {
-	mustEmbedUnimplementedUnsubscribeServiceServer()
+type UnsafeAccountServiceServer interface {
+	mustEmbedUnimplementedAccountServiceServer()
 }
 
-func RegisterUnsubscribeServiceServer(s grpc.ServiceRegistrar, srv UnsubscribeServiceServer) {
-	s.RegisterService(&UnsubscribeService_ServiceDesc, srv)
+func RegisterAccountServiceServer(s grpc.ServiceRegistrar, srv AccountServiceServer) {
+	s.RegisterService(&AccountService_ServiceDesc, srv)
 }
 
-func _UnsubscribeService_Unsubscribe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AccountRequest)
+func _AccountService_Unsubscribe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsubscribeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsubscribeServiceServer).Unsubscribe(ctx, in)
+		return srv.(AccountServiceServer).Unsubscribe(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/UnsubscribeService/Unsubscribe",
+		FullMethod: "/AccountService/Unsubscribe",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsubscribeServiceServer).Unsubscribe(ctx, req.(*AccountRequest))
+		return srv.(AccountServiceServer).Unsubscribe(ctx, req.(*UnsubscribeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// UnsubscribeService_ServiceDesc is the grpc.ServiceDesc for UnsubscribeService service.
+// AccountService_ServiceDesc is the grpc.ServiceDesc for AccountService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var UnsubscribeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "UnsubscribeService",
-	HandlerType: (*UnsubscribeServiceServer)(nil),
+var AccountService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "AccountService",
+	HandlerType: (*AccountServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Unsubscribe",
-			Handler:    _UnsubscribeService_Unsubscribe_Handler,
+			Handler:    _AccountService_Unsubscribe_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

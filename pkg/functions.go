@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/beanstalkd/go-beanstalk"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Repository struct {
@@ -23,6 +25,9 @@ type Repository struct {
 	data         map[int]types.DataToAccess
 	referer      types.Referer
 	db           *gorm.DB
+}
+type BeanstalkConn struct {
+	conn *beanstalk.Conn
 }
 
 func NewRepository() *Repository {
@@ -140,15 +145,15 @@ func (r *Repository) ContactsResp(n types.ContactResponce) []internal.Contacts {
 	}
 	return r.contacts
 }
-func (r *Repository) UnsubscribeAccount(db *gorm.DB, accountID int) error {
+func (r *Repository) UnsubscribeAccount(accountID int) error {
 	account := r.accounts[accountID]
 	if account.AccountID == 0 {
 		return fmt.Errorf("")
 	}
 	r.DelAccount(account)
-	db.Where("account_id = ?", account.AccountID).Delete(&internal.Contacts{})
-	db.Where("account_id = ?", account.AccountID).Delete(&internal.Integration{})
-	db.Delete(account)
+	r.db.Where("account_id = ?", account.AccountID).Delete(&internal.Contacts{})
+	r.db.Where("account_id = ?", account.AccountID).Delete(&internal.Integration{})
+	r.db.Delete(account)
 	config.CurrentAccount = 1
 	return nil
 }
@@ -263,4 +268,28 @@ func Router(repo *Repository) *http.ServeMux {
 	router.Handle("/vidget/unisender", FromAmoUniKey)
 	router.Handle("/import", ImportUni)
 	return router
+}
+
+func (*Repository) NewBeanstalkConn() (*BeanstalkConn, error) {
+	conn, err := beanstalk.Dial("tcp", "127.0.0.1:11300")
+	if err != nil {
+		return nil, err
+	}
+	return &BeanstalkConn{conn}, nil
+}
+
+func (bc *BeanstalkConn) Close() error {
+	return bc.conn.Close()
+}
+
+func (bc *BeanstalkConn) Put(body []byte, priority uint32, delay, ttr time.Duration) (uint64, error) {
+	return bc.conn.Put(body, priority, delay, ttr)
+}
+
+func (bc *BeanstalkConn) Delete(id uint64) error {
+	return bc.conn.Delete(id)
+}
+
+func (bc *BeanstalkConn) Reserve(ttr time.Duration) (id uint64, body []byte, err error) {
+	return bc.conn.Reserve(ttr)
 }
