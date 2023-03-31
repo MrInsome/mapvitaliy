@@ -22,9 +22,11 @@ type Repository struct {
 	accounts     map[int]internal.Account
 	integrations []internal.Integration
 	contacts     []internal.Contacts
+	unSyncCon    []internal.UnsyncAccounts
 	data         map[int]types.DataToAccess
 	referer      types.Referer
 	db           *gorm.DB
+	conn         *beanstalk.Conn
 }
 type BeanstalkConn struct {
 	conn *beanstalk.Conn
@@ -35,6 +37,7 @@ func NewRepository() *Repository {
 		accounts:     make(map[int]internal.Account),
 		integrations: []internal.Integration{},
 		contacts:     []internal.Contacts{},
+		unSyncCon:    []internal.UnsyncAccounts{},
 		data:         make(map[int]types.DataToAccess),
 		referer:      types.Referer{},
 	}
@@ -121,7 +124,7 @@ func (r *Repository) GetAllAccounts() []internal.Account {
 }
 
 func (r *Repository) GetAccount(accountID int) (internal.Account, error) {
-	if accountID >= len(r.accounts) {
+	if r.accounts[accountID].AccountID == 0 {
 		return internal.Account{}, fmt.Errorf("Aккаунт %d не найден в нашей системе", accountID)
 	}
 	return r.accounts[accountID], nil
@@ -145,6 +148,11 @@ func (r *Repository) ContactsResp(n types.ContactResponce) []internal.Contacts {
 	}
 	return r.contacts
 }
+
+func (r *Repository) AddSyncCon(id int, contact internal.Contacts) {
+	r.contacts[id] = contact
+}
+
 func (r *Repository) UnsubscribeAccount(accountID int) error {
 	account := r.accounts[accountID]
 	if account.AccountID == 0 {
@@ -219,13 +227,55 @@ func GetARTokens(repo AccountAuth, db *gorm.DB, w http.ResponseWriter) error {
 	account.Expires = respToken.ExpiresIn
 	repo.AddAccount(account)
 	db.Updates(account)
-	return err
+	return nil
 }
-func importUni(apiKey string, repo AccountRepo) error {
+
+func ExportAmo(w http.ResponseWriter, repo AccountRefer) {
+	var contacts types.ContactResponce
+	ref := repo.RefererGet()
+	account, err := repo.GetAccount(config.CurrentAccount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	page := 1
+	for {
+		r, err := http.NewRequest("GET", "https://"+ref.Referer+"/api/v4/contacts?limit=1&page="+strconv.Itoa(page), nil)
+		if err != nil {
+			http.Error(w, "Неверный запрос", http.StatusInternalServerError)
+			return
+		}
+		r.Header.Set("Authorization", "Bearer "+account.AccessToken)
+		client := &http.Client{}
+		resp, err := client.Do(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+		err = json.NewDecoder(resp.Body).Decode(&contacts)
+		if resp.Body == nil {
+			return
+		}
+		account.Contacts = repo.ContactsResp(contacts)
+		if err != nil {
+			return
+		}
+		repo.AddAccount(account)
+		repo.DBReturn().Updates(account)
+		if err != nil {
+			return
+		}
+		page++
+	}
+}
+
+func ImportUni(apiKey string, repo AccountRepo, w http.ResponseWriter) error {
 	account, err := repo.GetAccount(config.CurrentAccount)
 	if err != nil {
 		return err
 	}
+	var uniresp types.ImportUniResponse
 	contacts := account.Contacts
 	apiUrl := "https://api.unisender.com/ru/api/importContacts"
 	data := url.Values{}
@@ -234,18 +284,27 @@ func importUni(apiKey string, repo AccountRepo) error {
 	data.Set("field_names[0]", "email")
 	data.Set("field_names[1]", "Name")
 
-	for i, el := range contacts {
-		data.Set("data["+strconv.Itoa(i)+"][0]", el.Email)
-		data.Set("data["+strconv.Itoa(i)+"][1]", el.Name)
+	if len(contacts) < 501 {
+		for i, el := range contacts {
+			data.Set("data["+strconv.Itoa(i)+"][0]", el.Email)
+			data.Set("data["+strconv.Itoa(i)+"][1]", el.Name)
+		}
 	}
 
 	resp, err := http.Post(apiUrl, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+	err = json.NewDecoder(resp.Body).Decode(&uniresp)
+	err = json.NewEncoder(w).Encode(uniresp)
+	for _, el := range uniresp.Result.Log {
+		a, err := strconv.Atoi(el.Index)
+		if err != nil {
+			return err
+		}
+		repo.AddSyncCon(a, contacts[a])
+	}
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
-
 	return nil
 }
 
@@ -256,7 +315,7 @@ func Router(repo *Repository) *http.ServeMux {
 	RequestHandler := AmoContact(repo)
 	GetFromAmoVidget := FromAMOVidget(repo)
 	FromAmoUniKey := UnisenKey(repo)
-	ImportUni := UnisenderImport(repo)
+	Webhook := WebhookFunc(repo)
 
 	router := http.NewServeMux()
 
@@ -266,30 +325,31 @@ func Router(repo *Repository) *http.ServeMux {
 	router.Handle("/request", RequestHandler)
 	router.Handle("/accounts/integrations", IntegrationHandler)
 	router.Handle("/vidget/unisender", FromAmoUniKey)
-	router.Handle("/import", ImportUni)
+	router.Handle("/webhook", Webhook)
 	return router
 }
 
-func (*Repository) NewBeanstalkConn() (*BeanstalkConn, error) {
+func (r *Repository) NewBeanstalkConn() (*Repository, error) {
 	conn, err := beanstalk.Dial("tcp", "127.0.0.1:11300")
 	if err != nil {
 		return nil, err
 	}
-	return &BeanstalkConn{conn}, nil
+	r.conn = conn
+	return r, nil
 }
 
-func (bc *BeanstalkConn) Close() error {
-	return bc.conn.Close()
+func (r *Repository) Close() error {
+	return r.conn.Close()
 }
 
-func (bc *BeanstalkConn) Put(body []byte, priority uint32, delay, ttr time.Duration) (uint64, error) {
-	return bc.conn.Put(body, priority, delay, ttr)
+func (r *Repository) Put(body []byte, priority uint32, delay, ttr time.Duration) (uint64, error) {
+	return r.conn.Put(body, priority, delay, ttr)
 }
 
-func (bc *BeanstalkConn) Delete(id uint64) error {
-	return bc.conn.Delete(id)
+func (r *Repository) Delete(id uint64) error {
+	return r.conn.Delete(id)
 }
 
-func (bc *BeanstalkConn) Reserve(ttr time.Duration) (id uint64, body []byte, err error) {
-	return bc.conn.Reserve(ttr)
+func (r *Repository) Reserve(ttr time.Duration) (id uint64, body []byte, err error) {
+	return r.conn.Reserve(ttr)
 }

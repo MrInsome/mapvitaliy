@@ -24,3 +24,8 @@ type Contacts struct {
 	Name      string `json:"name"`
 	Email     string `json:"email" gorm:"primaryKey:Email"`
 }
+
+type UnsyncAccounts struct {
+	ContactID int    `json:"contactID"`
+	Name      string `json:"name"`
+}
