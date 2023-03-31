@@ -13,6 +13,7 @@ type AccountRepo interface {
 	DelAccount(account internal.Account)
 	GetAccountIntegrations(accountID int) []internal.Integration
 	GetAllAccounts() []internal.Account
+	AddSyncCon(id int, contact internal.Contacts)
 	GormDB
 }
 
@@ -27,8 +28,8 @@ type RefererRepo interface {
 	RefererGet() types.Referer
 }
 
-type BStalk interface {
-	NewBeanstalkConn() (*BeanstalkConn, error)
+type BStalkWH interface {
+	NewBeanstalkConn() (*Repository, error)
 	Close() error
 	Put(body []byte, priority uint32, delay, ttr time.Duration) (uint64, error)
 	Delete(id uint64) error
@@ -69,7 +70,6 @@ type AccountRefer interface {
 	RefererRepo
 	ContactRepo
 	AccountAuth
-	//BStalk
 }
 
 type AccountAuth interface {

@@ -6,7 +6,6 @@ import (
 	"apitraning/internal/types"
 	"encoding/json"
 	"fmt"
-	"github.com/beanstalkd/go-beanstalk"
 	"net/http"
 	"strconv"
 	"time"
@@ -41,18 +40,7 @@ func FromAMOVidget(repo AccountRefer) http.HandlerFunc {
 				}
 			}
 		default:
-			conn2, _ := beanstalk.Dial("tcp", "127.0.0.1:11300")
-			for a := 0; a < 10; a++ {
-				id, body, _ := conn2.Reserve(5 * time.Second)
-				idjb, _ := conn2.Put([]byte("Job +"), 1, 10, 100*time.Second)
-				conn2.Delete(id)
-				fmt.Fprintf(w, string(body)+"\n")
-				fmt.Fprintf(w, strconv.Itoa(int(id))+" "+strconv.Itoa(int(idjb))+"\n")
-			}
-			id, body, _ := conn2.Reserve(5 * time.Second)
-			fmt.Fprintf(w, string(body)+"\n"+strconv.Itoa(int(id)))
-			conn2.Close()
-
+			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
 		}
 	}
 }
@@ -62,7 +50,7 @@ func UnisenKey(repo AccountAuth) http.HandlerFunc {
 		switch r.Method {
 		case http.MethodPost:
 			var blinkAcc Account
-			blinkAcc, _ = repo.GetAccount(1)
+			blinkAcc, _ = repo.GetAccount(config.CurrentAccount)
 			err := r.ParseForm()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -95,7 +83,18 @@ func AuthHandler(repo AccountAuth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
-			GetARTokens(repo, repo.DBReturn(), w)
+			err := GetARTokens(repo, repo.DBReturn(), w)
+			if err != nil {
+				http.Error(w, "Ошибка получения токенов авторизации", http.StatusGone)
+				return
+			}
+		case http.MethodPut:
+			var ca types.CurrentAcc
+			if err := json.NewDecoder(r.Body).Decode(&ca); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			config.CurrentAccount = ca.Current
 		default:
 			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
 		}
@@ -104,43 +103,17 @@ func AuthHandler(repo AccountAuth) http.HandlerFunc {
 
 func AmoContact(repo AccountRefer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var contacts types.ContactResponce
-		ref := repo.RefererGet()
-		account, err := repo.GetAccount(config.CurrentAccount)
+		ExportAmo(w, repo)
+		account1, err := repo.GetAccount(config.CurrentAccount)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		page := 1
-		for {
-			r, err := http.NewRequest("GET", "https://"+ref.Referer+"/api/v4/contacts?limit=1&page="+strconv.Itoa(page), nil)
-			if err != nil {
-				http.Error(w, "Неверный запрос", http.StatusInternalServerError)
-				return
-			}
-			r.Header.Set("Authorization", "Bearer "+account.AccessToken)
-			client := &http.Client{}
-			resp, err := client.Do(r)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			defer resp.Body.Close()
-			err = json.NewDecoder(resp.Body).Decode(&contacts)
-			if resp.Body == nil {
-				break
-			}
-			account.Contacts = repo.ContactsResp(contacts)
-			if err != nil {
-				return
-			}
-			repo.AddAccount(account)
-			repo.DBReturn().Updates(account)
-			if err != nil {
-				return
-			}
-			page++
+		err = ImportUni(account1.UniKey, repo, w)
+		if err != nil {
+			http.Error(w, "Ошибка импорта", http.StatusInternalServerError)
 		}
+
 	}
 }
 
@@ -252,17 +225,17 @@ func AccountIntegrationsHandler(repo AccountIntegration) http.HandlerFunc {
 
 }
 
-func UnisenderImport(repo AccountIntegration) http.HandlerFunc {
+func WebhookFunc(repo BStalkWH) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		account, err := repo.GetAccount(config.CurrentAccount)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		for a := 0; a < 10; a++ {
+			id, body, _ := repo.Reserve(5 * time.Second)
+			idjb, _ := repo.Put([]byte("Job +"), 1, 10, 100*time.Second)
+			repo.Delete(id)
+			fmt.Fprintf(w, string(body)+"\n")
+			fmt.Fprintf(w, strconv.Itoa(int(id))+" "+strconv.Itoa(int(idjb))+"\n")
 		}
-		err = importUni(account.UniKey, repo)
-		if err != nil {
-			http.Error(w, "Ошибка импорта", http.StatusInternalServerError)
-		}
-
+		id, body, _ := repo.Reserve(5 * time.Second)
+		fmt.Fprintf(w, string(body)+"\n"+strconv.Itoa(int(id)))
+		repo.Close()
 	}
 }

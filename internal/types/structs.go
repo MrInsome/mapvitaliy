@@ -35,3 +35,20 @@ type ContactResponce struct {
 		} `json:"contacts"`
 	} `json:"_embedded"`
 }
+
+type ImportUniResponse struct {
+	Result struct {
+		Added   int `json:"added"`
+		Updated int `json:"updated"`
+		Deleted int `json:"deleted"`
+		Invalid int `json:"invalid"`
+		Log     []struct {
+			Index string `json:"index"`
+		} `json:"log"`
+	} `json:"result"`
+	Error string `json:"error"`
+}
+
+type CurrentAcc struct {
+	Current int `json:"id"`
+}
