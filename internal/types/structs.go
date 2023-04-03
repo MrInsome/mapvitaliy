@@ -3,12 +3,6 @@ package types
 type Referer struct {
 	Referer string `json:"referer"`
 }
-type TokenResponse struct {
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
 
 type DataToAccess struct {
 	ClientID     string `json:"client_id"`
