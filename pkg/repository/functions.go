@@ -8,32 +8,22 @@ import (
 	"gorm.io/gorm"
 )
 
-func (r *Repository) UnsubscribeAccount(accountID int) error {
-	account := r.accounts[accountID]
-	if account.AccountID == 0 {
-		return fmt.Errorf("")
-	}
-	r.DelAccount(account)
-	r.db.Where("account_id = ?", account.AccountID).Delete(&types.Contacts{})
-	r.db.Where("account_id = ?", account.AccountID).Delete(&types.Integration{})
-	r.db.Delete(account)
-	return nil
-}
 func (r *Repository) DBReturn() *gorm.DB {
 	return r.db
 }
 
-func (r *Repository) GormOpen() {
+func (r *Repository) GormOpen() error {
 	db, err := gorm.Open(mysql.Open(config.Dsn), &gorm.Config{})
 	if err != nil {
-		panic("Невозможно подключится к БД")
+		return fmt.Errorf("Ошибка соединения с базой данных: %w", err)
 	}
 	r.db = db
 	err = r.db.AutoMigrate(&types.Account{}, &types.Integration{}, &types.Contacts{})
 	if err != nil {
-		panic("Невозможно провести миграцию в БД")
+		return fmt.Errorf("Ошибка миграции базы данных: %w", err)
 	}
 	r.SynchronizeDB(r.db)
+	return nil
 }
 
 func (r *Repository) SynchronizeDB(db *gorm.DB) {

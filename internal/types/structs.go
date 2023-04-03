@@ -1,9 +1,5 @@
 package types
 
-type Referer struct {
-	Referer string `json:"referer"`
-}
-
 type DataToAccess struct {
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`

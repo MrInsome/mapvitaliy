@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"apitraning/internal/config"
 	"apitraning/internal/types"
 	"fmt"
 )
@@ -71,12 +72,15 @@ func (r *Repository) GetAccountIntegrations(accountID int) []types.Integration {
 	return account.Integration
 }
 
-func (r *Repository) GetAllAccounts() []types.Account {
+func (r *Repository) GetAllAccounts() ([]types.Account, error) {
 	accounts := make([]types.Account, 0, len(r.accounts))
 	for _, account := range r.accounts {
 		accounts = append(accounts, account)
 	}
-	return accounts
+	if len(accounts) == 0 {
+		return accounts, fmt.Errorf("В базе отсутствуют данные об аккаунтах")
+	}
+	return accounts, nil
 }
 
 func (r *Repository) GetAccount(accountID int) (types.Account, error) {
@@ -86,10 +90,31 @@ func (r *Repository) GetAccount(accountID int) (types.Account, error) {
 	return r.accounts[accountID], nil
 }
 
-func (r *Repository) RefererAdd(ref types.Referer) {
-	r.referer = ref
+func (r *Repository) UnsubscribeAccount(accountID int) error {
+	account := r.accounts[accountID]
+	if account.AccountID == 0 {
+		return fmt.Errorf("Аккаунта не существует")
+	}
+	r.DelAccount(account)
+	r.db.Where("account_id = ?", account.AccountID).Delete(&types.Contacts{})
+	r.db.Where("account_id = ?", account.AccountID).Delete(&types.Integration{})
+	r.db.Delete(account)
+	return nil
 }
 
-func (r *Repository) RefererGet() types.Referer {
-	return r.referer
+func (r *Repository) SetCurrentAccount() error {
+	if config.CurrentAccount == 1 {
+		accDB, err := r.GetAllAccounts()
+		if err != nil {
+			return err
+		}
+		for i, _ := range accDB {
+			if accDB[i].Ref != "" {
+				config.CurrentAccount = accDB[i].AccountID
+				return nil
+			}
+		}
+		return err
+	}
+	return nil
 }

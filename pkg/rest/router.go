@@ -12,17 +12,18 @@ func Router(repo *repository.Repository) *http.ServeMux {
 	Auth := pkg.AuthHandler(repo)
 	RequestHandler := pkg.AmoContact(repo)
 	GetFromAmoVidget := pkg.FromAMOVidget(repo)
-	FromAmoUniKey := pkg.UnisenKey(repo)
+	FromAmoUniKey := pkg.HandleUnisenKey(repo)
 	Webhook := pkg.WebhookFunc(repo)
+	Unsync := pkg.UnsyncContacts(repo)
 
 	router := http.NewServeMux()
-
 	router.Handle("/vidget", GetFromAmoVidget)
+	router.Handle("/vidget/unisender", FromAmoUniKey)
 	router.Handle("/accounts", Handler)
+	router.Handle("/accounts/integrations", IntegrationHandler)
 	router.Handle("/access_token", Auth)
 	router.Handle("/request", RequestHandler)
-	router.Handle("/accounts/integrations", IntegrationHandler)
-	router.Handle("/vidget/unisender", FromAmoUniKey)
 	router.Handle("/webhook", Webhook)
+	router.Handle("/unsync", Unsync)
 	return router
 }
