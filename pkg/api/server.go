@@ -1,7 +1,7 @@
 package api
 
 import (
-	"apitraning/pkg"
+	"apitraning/pkg/repository"
 	"context"
 	"google.golang.org/grpc"
 	"log"
@@ -10,7 +10,7 @@ import (
 
 type serverStruct struct {
 	UnimplementedAccountServiceServer
-	*pkg.Repository
+	*repository.Repository
 	accountServiceClient
 }
 
@@ -22,7 +22,7 @@ func (s *serverStruct) Unsubscribe(ctx context.Context, req *UnsubscribeRequest)
 	return &UnsubscribeResponse{Success: true}, nil
 }
 
-func OpenGRPC(r *pkg.Repository) {
+func OpenGRPC(r *repository.Repository) {
 	lis, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		log.Fatalf("%v", err)

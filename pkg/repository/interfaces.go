@@ -1,19 +1,18 @@
-package pkg
+package repository
 
 import (
-	"apitraning/internal"
 	"apitraning/internal/types"
 	"gorm.io/gorm"
 	"time"
 )
 
 type AccountRepo interface {
-	AddAccount(account internal.Account)
-	GetAccount(accountID int) (internal.Account, error)
-	DelAccount(account internal.Account)
-	GetAccountIntegrations(accountID int) []internal.Integration
-	GetAllAccounts() []internal.Account
-	AddSyncCon(id int, contact internal.Contacts)
+	AddAccount(account types.Account)
+	GetAccount(accountID int) (types.Account, error)
+	DelAccount(account types.Account)
+	GetAccountIntegrations(accountID int) []types.Integration
+	GetAllAccounts() []types.Account
+	AddSyncCon(id int, contact types.Contacts)
 	GormDB
 }
 
@@ -37,15 +36,15 @@ type BStalkWH interface {
 }
 
 type IntegrationRepo interface {
-	AddIntegration(accountID int, integration internal.Integration)
-	GetAccountIntegrations(accountID int) []internal.Integration
-	UpdateIntegration(accountID int, integration internal.Integration, replaced internal.Integration)
-	DelIntegration(accountID int, integration internal.Integration)
+	AddIntegration(accountID int, integration types.Integration)
+	GetAccountIntegrations(accountID int) []types.Integration
+	UpdateIntegration(accountID int, integration types.Integration, replaced types.Integration)
+	DelIntegration(accountID int, integration types.Integration)
 	GormDB
 }
 
 type ContactRepo interface {
-	ContactsResp(n types.ContactResponce) []internal.Contacts
+	ParseContactsResponse(n types.ContactResponce) []types.Contacts
 	GormDB
 }
 

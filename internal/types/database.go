@@ -1,4 +1,4 @@
-package internal
+package types
 
 type Account struct {
 	AccessToken  string        `json:"access_token"`
