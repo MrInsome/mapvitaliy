@@ -10,16 +10,17 @@ import (
 )
 
 func ExportAmo(w http.ResponseWriter, repo repository.AccountRefer) {
+	err := repo.SetCurrentAccount()
 	var contacts types.ContactResponce
-	ref := repo.RefererGet()
 	account, err := repo.GetAccount(config.CurrentAccount)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	ref := account.Ref
 	page := 1
 	for {
-		r, err := http.NewRequest("GET", "https://"+ref.Referer+"/api/v4/contacts?limit=1&page="+strconv.Itoa(page), nil)
+		r, err := http.NewRequest("GET", "https://"+ref+"/api/v4/contacts?limit=1&page="+strconv.Itoa(page), nil)
 		if err != nil {
 			http.Error(w, "Неверный запрос", http.StatusInternalServerError)
 			return

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"apitraning/internal/types"
+	"fmt"
 	"net/mail"
 )
 
@@ -24,6 +25,16 @@ func (r *Repository) ParseContactsResponse(parseModel types.ContactResponce) []t
 	return r.contacts
 }
 
-func (r *Repository) AddSyncCon(id int, contact types.Contacts) {
-	r.contacts[id] = contact
+func (r *Repository) AddUnsyncCon(id int, contact types.UnsyncContacts) {
+	r.unSyncCon[id] = contact
+}
+func (r *Repository) GetUnsyncCon() ([]types.UnsyncContacts, error) {
+	unsyncContacts := make([]types.UnsyncContacts, 0, len(r.accounts))
+	for _, account := range r.unSyncCon {
+		unsyncContacts = append(unsyncContacts, account)
+	}
+	if len(unsyncContacts) == 0 {
+		return unsyncContacts, fmt.Errorf("В базе отсутствуют данные о несихронизированных контактах")
+	}
+	return unsyncContacts, nil
 }

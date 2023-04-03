@@ -11,20 +11,17 @@ type AccountRepo interface {
 	GetAccount(accountID int) (types.Account, error)
 	DelAccount(account types.Account)
 	GetAccountIntegrations(accountID int) []types.Integration
-	GetAllAccounts() []types.Account
-	AddSyncCon(id int, contact types.Contacts)
+	GetAllAccounts() ([]types.Account, error)
+	AddUnsyncCon(id int, contact types.UnsyncContacts)
+	GetUnsyncCon() ([]types.UnsyncContacts, error)
+	SetCurrentAccount() error
 	GormDB
 }
 
 type GormDB interface {
 	SynchronizeDB(db *gorm.DB)
-	GormOpen()
+	GormOpen() error
 	DBReturn() *gorm.DB
-}
-
-type RefererRepo interface {
-	RefererAdd(ref types.Referer)
-	RefererGet() types.Referer
 }
 
 type BStalkWH interface {
@@ -60,13 +57,11 @@ type Unsubscribe interface {
 type AccountIntegration interface {
 	AccountRepo
 	IntegrationRepo
-	RefererRepo
 	ContactRepo
 }
 
 type AccountRefer interface {
 	AccountRepo
-	RefererRepo
 	ContactRepo
 	AccountAuth
 }
@@ -74,5 +69,4 @@ type AccountRefer interface {
 type AccountAuth interface {
 	AccountRepo
 	AuthRepo
-	RefererRepo
 }

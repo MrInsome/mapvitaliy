@@ -35,46 +35,49 @@ func FromAMOVidget(repo repository.AccountRefer) http.HandlerFunc {
 		account := types.Account{
 			AccountID:   config.AccountID,
 			Integration: integration,
+			Ref:         r.URL.Query().Get("referer"),
 		}
-		ref := types.Referer{Referer: r.URL.Query().Get("referer")}
-		repo.RefererAdd(ref)
 		repo.AddAccount(account)
 	}
 }
 
-func UnisenKey(repo repository.AccountAuth) http.HandlerFunc {
+func HandleUnisenKey(repo repository.AccountAuth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			currentAcc, err := repo.GetAccount(config.CurrentAccount)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			if err := r.ParseForm(); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			id, err := strconv.Atoi(r.FormValue("account_id"))
-			if id != config.CurrentAccount {
-				acc := types.Account{
-					AccountID:   id,
-					UniKey:      r.FormValue("unisender_key"),
-					Integration: currentAcc.Integration,
-				}
-				config.CurrentAccount = id
-				repo.AddAccount(acc)
-				if err := repo.DBReturn().Create(acc).Error; err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				if err := amoCRM.GetARTokens(repo, repo.DBReturn(), w); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-			}
-		default:
+		if r.Method != http.MethodPost {
 			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
+			return
+		}
+		currentAcc, err := repo.GetAccount(config.CurrentAccount)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		id, err := strconv.Atoi(r.FormValue("account_id"))
+		if err != nil {
+			http.Error(w, "Неизвестный Аккаунт ID", http.StatusBadRequest)
+			return
+		}
+		if id != config.CurrentAccount {
+			acc := types.Account{
+				AccountID:   id,
+				UniKey:      r.FormValue("unisender_key"),
+				Integration: currentAcc.Integration,
+				Ref:         currentAcc.Ref,
+			}
+			config.CurrentAccount = id
+			repo.AddAccount(acc)
+			if err := repo.DBReturn().Create(acc).Error; err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if err := amoCRM.GetARTokens(repo, repo.DBReturn(), w); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 }
@@ -88,13 +91,6 @@ func AuthHandler(repo repository.AccountAuth) http.HandlerFunc {
 				http.Error(w, "Ошибка получения токенов авторизации", http.StatusGone)
 				return
 			}
-		case http.MethodPut:
-			var ca types.CurrentAcc
-			if err := json.NewDecoder(r.Body).Decode(&ca); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			config.CurrentAccount = ca.Current
 		default:
 			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
 		}
@@ -103,6 +99,18 @@ func AuthHandler(repo repository.AccountAuth) http.HandlerFunc {
 
 func AmoContact(repo repository.AccountRefer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if config.CurrentAccount == 1 {
+			accDB, err := repo.GetAllAccounts()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if len(accDB) > 1 {
+				config.CurrentAccount = accDB[len(accDB)-1].AccountID
+			} else {
+				config.CurrentAccount = accDB[0].AccountID
+			}
+		}
 		amoCRM.ExportAmo(w, repo)
 		account1, err := repo.GetAccount(config.CurrentAccount)
 		if err != nil {
@@ -121,8 +129,12 @@ func AccountsHandler(repo repository.AccountRepo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			accounts := repo.GetAllAccounts()
-			err := json.NewEncoder(w).Encode(accounts)
+			accounts, err := repo.GetAllAccounts()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			err = json.NewEncoder(w).Encode(accounts)
 			if err != nil {
 				return
 			}
@@ -225,17 +237,56 @@ func AccountIntegrationsHandler(repo repository.AccountIntegration) http.Handler
 
 }
 
+func UnsyncContacts(repo repository.AccountRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		unsyncCon, err := repo.GetUnsyncCon()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = json.NewEncoder(w).Encode(unsyncCon)
+		if err != nil {
+			return
+		}
+		return
+	}
+}
+
 func WebhookFunc(repo repository.BStalkWH) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		for a := 0; a < 10; a++ {
-			id, body, _ := repo.Reserve(5 * time.Second)
-			idjb, _ := repo.Put([]byte("Job +"), 1, 10, 100*time.Second)
-			repo.Delete(id)
-			fmt.Fprintf(w, string(body)+"\n")
-			fmt.Fprintf(w, strconv.Itoa(int(id))+" "+strconv.Itoa(int(idjb))+"\n")
+		if r.Method != http.MethodPost {
+			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
+			return
 		}
-		id, body, _ := repo.Reserve(5 * time.Second)
-		fmt.Fprintf(w, string(body)+"\n"+strconv.Itoa(int(id)))
-		repo.Close()
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Не могу прочитать form webhook", http.StatusBadRequest)
+			return
+		}
+		var contact types.Contacts
+		add := r.FormValue("contacts[add][0][id]")
+		if add != "" {
+			_, err := repo.Put([]byte("AddContact "+add), 1, 10, 100*time.Second)
+			fmt.Fprint(w, "Работа добавлена в очередь")
+			if err != nil {
+				return
+			}
+		}
+		update := r.FormValue("contacts[update][0][id]")
+		if update != "" {
+			_, err := repo.Put([]byte("UpdateContact "+update), 1, 10, 100*time.Second)
+			fmt.Fprint(w, "Работа добавлена в очередь")
+			if err != nil {
+				return
+			}
+		}
+		del := r.FormValue("contacts[delete][0][id]")
+		if del != "" {
+			_, err := repo.Put([]byte("DeleteContact "+strconv.Itoa(contact.ContactID)), 1, 10, 100*time.Second)
+			fmt.Fprint(w, "Работа добавлена в очередь")
+			if err != nil {
+				return
+			}
+		}
+		return
 	}
 }

@@ -6,6 +6,7 @@ type Account struct {
 	Expires      int           `json:"expires"`
 	UniKey       string        `json:"unisender_key"`
 	AccountID    int           `json:"account_id" gorm:"primaryKey:AccountID"`
+	Ref          string        `json:"referer"`
 	Integration  []Integration `gorm:"foreignKey:AccountID"`
 	Contacts     []Contacts    `gorm:"foreignKey:AccountID"`
 }
@@ -25,7 +26,7 @@ type Contacts struct {
 	Email     string `json:"email" gorm:"primaryKey:Email"`
 }
 
-type UnsyncAccounts struct {
+type UnsyncContacts struct {
 	ContactID int    `json:"contactID"`
 	Name      string `json:"name"`
 }

@@ -10,9 +10,8 @@ type Repository struct {
 	accounts     map[int]types.Account
 	integrations []types.Integration
 	contacts     []types.Contacts
-	unSyncCon    []types.UnsyncAccounts
+	unSyncCon    map[int]types.UnsyncContacts
 	data         map[int]types.DataToAccess
-	referer      types.Referer
 	db           *gorm.DB
 	conn         *beanstalk.Conn
 }

@@ -18,19 +18,22 @@ type TokenResponse struct {
 
 func GetARTokens(repo repository.AccountAuth, db *gorm.DB, w http.ResponseWriter) error {
 	account, err := repo.GetAccount(config.CurrentAccount)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return err
-	}
-	ref := repo.RefererGet()
-	var respToken TokenResponse
 	repo.AddAuthData(config.CurrentAccount)
-	a, err := json.Marshal(repo.AuthData(config.CurrentAccount))
+	auth := repo.AuthData(1)
+	if auth.ClientID == "" {
+		auth = repo.AuthData(config.CurrentAccount)
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
 	}
-	resp, err := http.Post("https://"+ref.Referer+"/oauth2/access_token",
+	var respToken TokenResponse
+	a, err := json.Marshal(auth)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+	resp, err := http.Post("https://"+account.Ref+"/oauth2/access_token",
 		"application/json", bytes.NewBuffer(a))
 	err = json.NewDecoder(resp.Body).Decode(&respToken)
 	err = json.NewEncoder(w).Encode(respToken)
