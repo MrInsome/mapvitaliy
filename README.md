@@ -1,92 +1,79 @@
-# APITraning
+# Описание сервиса интеграции с amoCRM и Unisender
+
+Сервис интеграции предназначен для связи между amoCRM и Unisender. С помощью этого сервиса вы можете автоматически отправлять контакты из amoCRM в Unisender. Сервис также предоставляет различные функции, такие как управление аккаунтами, авторизация и запрос данных.
+
+## Начало работы
+
+Чтобы начать работу с сервисом, выполните следующие действия:
+
+1. Скачайте проект.
+2. Откройте терминал и перейдите в папку проекта.
+3. Запустите контейнер Docker с помощью команды `sudo docker compose up`.
+4. Запустите ngrok с помощью команды `ngrok http 8080`.
+   Примечание: Для корректной работы виджета в `ngrok_url` необходимо добавить `/vidget`.
+
+## Интеграция с amoCRM
+
+Сервис является интеграцией в виде виджета для amoCRM. Для этого в amoCRM требуется добавить виджет, который будет вызывать API сервиса интеграции.
+
+Для начала работы с сервисом нужно заполнить информацию о `secret_key` и `redirect_url` в файле `.env` проекта. Примечание: Для корректной работы виджета в `redirect_url` необходимо добавить `/vidget`.
+
+## Endpoints
+
+Сервис имеет следующие endpoints:
+
+- `/accounts`:
+    - `POST {account_id}` - создать новый аккаунт
+    - `GET` - получить список всех доступных аккаунтов
+    - `PUT {account_id}` - изменить аккаунт
+    - `DELETE {account_id}` - удалить аккаунт
+- `/accounts/integrations`:
+    - `GET {account_id}` - получить информацию о интеграциях аккаунта
+- `/accounts/unsync`:
+    - `GET` - получить информацию о несинхронизированных контактах
+- `/accounts/sync`:
+    - `GET` - получить информацию о синхронизированных контактах
+- `/integrations`:
+    - `PUT {account_id}` - обновить информацию о интеграции в аккаунте
+    - `DELETE {account_id}` - удалить интеграцию в аккаунте
+- `/request`:
+    - `DELETE {account_id}` - удалить интеграцию в аккаунте
+- `/webhookwork`:
+    - `GET` - выполнение системы очередей
+- `/sync`:
+    - `POST` - выполнение синхронизации контактов
+- `/acchasuni`:
+    - `GET` - проверка аккаунта на подключение к Unisender
 
 
+## Системные endpoints
 
-## Getting started
+- `/vidget` - GET запрос, который обрабатывает информацию о подключении виджета.
+- `/vidget/unisender` - POST запрос, который обрабатывает информацию после добавления api_key.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Авторизация в amoCRM и Unisender
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Авторизация в amoCRM и Unisender происходит в момент подключения к приватной интеграции и сохранения `Unisender_api` для получения доступа к контактам. Авторизация также сохраняется в базе данных.
 
-## Add your files
+## Синхронизация списка контактов из amoCRM
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+Для получения списка контактов из amoCRM сервис запрашивает необходимые доступы и отправляет их в Unisender. Запрос делается с помощью POST запроса на `/sync`. После запроса сервис сохраняет несинхронизированные контакты в `memory_database`, а синхронизированные в связанную с аккаунтом таблицу `contacts`.
 
-```
-cd existing_repo
-git remote add origin https://git.amocrm.ru/esamanev/apitraning.git
-git branch -M master
-git push -uf origin master
-```
+## Управление аккаунтами
 
-## Integrate with your tools
+Сервис может добавлять, получать и удалять информацию, связанную с аккаунтами, посредством запросов на `/accounts` endpoints.
 
-- [ ] [Set up project integrations](https://git.amocrm.ru/esamanev/apitraning/-/settings/integrations)
+## Вебхуки
 
-## Collaborate with your team
+Сервис может обрабатывать вебхуки на добавление, изменение и удаление контактов.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+## Отключение учетной записи от сервиса
 
-## Test and Deploy
+Сервис имеет возможность отключать учетную запись от сервиса посредством RPC запроса в теле которого будет указан `account_id`. Формат запроса будет определен редактором текста.
 
-Use the built-in continuous integration in GitLab.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Заключение
+   Сервис интеграции для amoCRM и Unisender, который будет удобен в использовании и позволит вам сохранять и обрабатывать контакты вашей CRM системы.
+   Он представляет собой виджет, интегрированный в amoCRM, который позволяет авторизовываться в Unisender и запрашивать нужные доступы для получения списка контактов. Он также обеспечивает сохранение и поддержку авторизации, что позволяет быстро и удобно работать с данными.
+   Сервис  умеет получать список контактов из amoCRM и сохранять их значения email в базе данных. Затем авторизуется и получаем доступ к Unisender, где отправляет контакты из списка. Так же сервис поддерживает работу со множеством аккаунтов, что позволяет управлять данными разных компаний.
+   Он также может ответить на ряд запросов, включая показ несинхронизированных и синхронизированных контактов, список авторизованных учетных записей, список интеграций учетных записей и состояние подключения к Unisender. Кроме того, он позволяем отвязать учетную запись посредством RPC запроса, если это необходимо. Сервис интеграции для amoCRM и Unisender представляет собой надежный и удобный инструмент для обработки контактов. 
