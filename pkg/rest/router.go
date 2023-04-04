@@ -2,28 +2,31 @@ package rest
 
 import (
 	"apitraning/pkg"
+	"apitraning/pkg/integrations/amoCRM"
 	"apitraning/pkg/repository"
 	"net/http"
 )
 
 func Router(repo *repository.Repository) *http.ServeMux {
-	Handler := pkg.AccountsHandler(repo)
-	IntegrationHandler := pkg.AccountIntegrationsHandler(repo)
-	Auth := pkg.AuthHandler(repo)
-	RequestHandler := pkg.AmoContact(repo)
-	GetFromAmoVidget := pkg.FromAMOVidget(repo)
-	FromAmoUniKey := pkg.HandleUnisenKey(repo)
-	Webhook := pkg.WebhookFunc(repo)
+	AccountsHandler := pkg.AccountsHandler(repo)
+	IntegrationsHandler := pkg.AccountIntegrationsHandler(repo)
+	AuthHandler := amoCRM.AuthHandler(repo)
+	ContactsSync := pkg.ContactsSync(repo)
+	FromAmoVidget := amoCRM.FromAMOVidget(repo)
+	UnisenKey := amoCRM.HandleUnisenKey(repo)
+	WebhookProd := amoCRM.WebhookProducer(repo)
+	WebhookWork := amoCRM.WebhookWorker(repo)
 	Unsync := pkg.UnsyncContacts(repo)
 
 	router := http.NewServeMux()
-	router.Handle("/vidget", GetFromAmoVidget)
-	router.Handle("/vidget/unisender", FromAmoUniKey)
-	router.Handle("/accounts", Handler)
-	router.Handle("/accounts/integrations", IntegrationHandler)
-	router.Handle("/access_token", Auth)
-	router.Handle("/request", RequestHandler)
-	router.Handle("/webhook", Webhook)
+	router.Handle("/vidget", FromAmoVidget)
+	router.Handle("/vidget/unisender", UnisenKey)
+	router.Handle("/accounts", AccountsHandler)
+	router.Handle("/accounts/integrations", IntegrationsHandler)
+	router.Handle("/access_token", AuthHandler)
+	router.Handle("/request", ContactsSync)
+	router.Handle("/webhook", WebhookProd)
+	router.Handle("/webhookwork", WebhookWork)
 	router.Handle("/unsync", Unsync)
 	return router
 }
