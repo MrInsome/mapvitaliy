@@ -36,7 +36,7 @@ services:
     depends_on:
       - fullstack-mysql
     environment:
-      - PMA_HOST=fullstack-mysql # Note the "fullstack-mysql". Must be the name of the what you used as the mysql service.
+      - PMA_HOST=fullstack-mysql # Note the "fullstack-mysql". Must be the name of what you used as the mysql service.
       - PMA_USER=${DB_USER}
       - PMA_PORT=${DB_PORT}
       - PMA_PASSWORD=${DB_PASSWORD}

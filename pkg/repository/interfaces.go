@@ -2,7 +2,6 @@ package repository
 
 import (
 	"apitraning/internal/types"
-	"gorm.io/gorm"
 	"time"
 )
 
@@ -12,16 +11,9 @@ type AccountRepo interface {
 	DelAccount(account types.Account)
 	GetAccountIntegrations(accountID int) []types.Integration
 	GetAllAccounts() ([]types.Account, error)
-	AddUnsyncCon(id int, contact types.UnsyncContacts)
-	GetUnsyncCon() ([]types.UnsyncContacts, error)
 	SetCurrentAccount() error
 	GormDB
-}
-
-type GormDB interface {
-	SynchronizeDB(db *gorm.DB)
-	GormOpen() error
-	DBReturn() *gorm.DB
+	BStalkWH
 }
 
 type BStalkWH interface {
@@ -30,6 +22,14 @@ type BStalkWH interface {
 	Put(body []byte, priority uint32, delay, ttr time.Duration) (uint64, error)
 	Delete(id uint64) error
 	Reserve(ttr time.Duration) (id uint64, body []byte, err error)
+}
+
+type ContactsRepo interface {
+	AddUnsyncCon(id int, contact types.UnsyncContacts)
+	GetUnsyncCon() ([]types.UnsyncContacts, error)
+	AddContact(contact types.Contacts)
+	GetContact(conID int) (types.Contacts, error)
+	DelContact(account types.Account, contact types.Contacts)
 }
 
 type IntegrationRepo interface {
@@ -64,9 +64,15 @@ type AccountRefer interface {
 	AccountRepo
 	ContactRepo
 	AccountAuth
+	ContactsRepo
 }
 
 type AccountAuth interface {
 	AccountRepo
 	AuthRepo
+}
+
+type AccountContacts interface {
+	AccountRepo
+	ContactsRepo
 }

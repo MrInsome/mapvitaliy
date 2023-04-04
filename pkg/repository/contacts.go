@@ -38,3 +38,27 @@ func (r *Repository) GetUnsyncCon() ([]types.UnsyncContacts, error) {
 	}
 	return unsyncContacts, nil
 }
+func (r *Repository) GetContact(conID int) (types.Contacts, error) {
+	if r.contacts[conID].ContactID == 0 {
+		return types.Contacts{}, fmt.Errorf("контакт %d не найден в нашей системе", conID)
+	}
+	return r.contacts[conID], nil
+}
+func (r *Repository) AddContact(contact types.Contacts) {
+	r.accounts[contact.AccountID].Contacts[contact.ContactID] = contact
+}
+
+func (r *Repository) DelContact(account types.Account, contact types.Contacts) {
+	account, ok := r.accounts[account.AccountID]
+	if !ok {
+		return
+	}
+	for i, el := range account.Contacts {
+		if el == contact {
+			account.Contacts[i] = account.Contacts[len(account.Contacts)-1]
+			account.Contacts[len(account.Contacts)-1] = types.Contacts{}
+			account.Contacts = account.Contacts[:len(account.Contacts)-1]
+		}
+	}
+	r.accounts[account.AccountID] = account
+}

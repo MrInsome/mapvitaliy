@@ -48,3 +48,18 @@ func GetARTokens(repo repository.AccountAuth, db *gorm.DB, w http.ResponseWriter
 	db.Updates(account)
 	return nil
 }
+
+func AuthHandler(repo repository.AccountAuth) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			err := GetARTokens(repo, repo.DBReturn(), w)
+			if err != nil {
+				http.Error(w, "Ошибка получения токенов авторизации", http.StatusGone)
+				return
+			}
+		default:
+			http.Error(w, "Недопустимый метод", http.StatusMethodNotAllowed)
+		}
+	}
+}

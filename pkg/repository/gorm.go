@@ -8,6 +8,12 @@ import (
 	"gorm.io/gorm"
 )
 
+type GormDB interface {
+	SynchronizeDB(db *gorm.DB)
+	GormOpen() error
+	DBReturn() *gorm.DB
+}
+
 func (r *Repository) DBReturn() *gorm.DB {
 	return r.db
 }
@@ -15,12 +21,12 @@ func (r *Repository) DBReturn() *gorm.DB {
 func (r *Repository) GormOpen() error {
 	db, err := gorm.Open(mysql.Open(config.Dsn), &gorm.Config{})
 	if err != nil {
-		return fmt.Errorf("Ошибка соединения с базой данных: %w", err)
+		return fmt.Errorf("ошибка соединения с базой данных: %w", err)
 	}
 	r.db = db
 	err = r.db.AutoMigrate(&types.Account{}, &types.Integration{}, &types.Contacts{})
 	if err != nil {
-		return fmt.Errorf("Ошибка миграции базы данных: %w", err)
+		return fmt.Errorf("ошибка миграции базы данных: %w", err)
 	}
 	r.SynchronizeDB(r.db)
 	return nil
@@ -33,7 +39,7 @@ func (r *Repository) SynchronizeDB(db *gorm.DB) {
 	db.Find(&account)
 	for i, el := range account {
 		db.Where("account_id = ?", el.AccountID).Find(&integrations)
-		account[i].Integration = integrations
+		account[i].Contactss = integrations
 		db.Where("account_id = ?", el.AccountID).Find(&contacts)
 		account[i].Contacts = contacts
 		r.AddAccount(account[i])
