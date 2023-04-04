@@ -59,7 +59,7 @@ func WebhookWorker(repo repository.AccountContacts) http.HandlerFunc {
 		for {
 			id, body, err := repo.Reserve(5 * time.Second)
 			if body == nil {
-				fmt.Fprint(w, "В очереди пусто")
+				fmt.Fprint(w, "Работа выполнена. В очереди пусто")
 				break
 			}
 			splited := strings.Split(string(body), " ")

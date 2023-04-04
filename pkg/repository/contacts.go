@@ -38,6 +38,18 @@ func (r *Repository) GetUnsyncCon() ([]types.UnsyncContacts, error) {
 	}
 	return unsyncContacts, nil
 }
+
+func (r *Repository) GetSyncCon() ([]types.Contacts, error) {
+	Contacts := make([]types.Contacts, 0, len(r.accounts))
+	for _, account := range r.contacts {
+		Contacts = append(Contacts, account)
+	}
+	if len(Contacts) == 0 {
+		return Contacts, fmt.Errorf("В базе отсутствуют данные о сихронизированных контактах")
+	}
+	return Contacts, nil
+}
+
 func (r *Repository) GetContact(conID int) (types.Contacts, error) {
 	if r.contacts[conID].ContactID == 0 {
 		return types.Contacts{}, fmt.Errorf("контакт %d не найден в нашей системе", conID)

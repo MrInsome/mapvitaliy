@@ -7,6 +7,7 @@ import (
 	"apitraning/pkg/integrations/unisender"
 	"apitraning/pkg/repository"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -67,7 +68,7 @@ func AccountsHandler(repo repository.AccountRepo) http.HandlerFunc {
 				return
 			}
 			repo.AddAccount(account)
-			repo.DBReturn().Updates(account)
+			repo.DBReturn().Where("account_id = ?", account.AccountID).Updates(account)
 			w.WriteHeader(http.StatusCreated)
 		case http.MethodDelete:
 			var account types.Account
@@ -112,7 +113,7 @@ func AccountIntegrationsHandler(repo repository.AccountIntegration) http.Handler
 				return
 			}
 			var integration types.Integration
-			integration = account.Contactss[0]
+			integration = account.Integrations[0]
 			repo.AddIntegration(account.AccountID, integration)
 			repo.DBReturn().Updates(integration)
 			w.WriteHeader(http.StatusCreated)
@@ -122,13 +123,13 @@ func AccountIntegrationsHandler(repo repository.AccountIntegration) http.Handler
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			if len(account.Contactss) < 2 {
+			if len(account.Integrations) < 2 {
 				http.Error(w, "Недостаточно аргументов у интеграции", http.StatusBadRequest)
 				return
 			}
 			var integration types.Integration
-			integration = account.Contactss[0]
-			replaced := account.Contactss[1]
+			integration = account.Integrations[0]
+			replaced := account.Integrations[1]
 			repo.UpdateIntegration(account.AccountID, integration, replaced)
 			w.WriteHeader(http.StatusCreated)
 		case http.MethodDelete:
@@ -138,7 +139,7 @@ func AccountIntegrationsHandler(repo repository.AccountIntegration) http.Handler
 				return
 			}
 			var integration types.Integration
-			integration = account.Contactss[0]
+			integration = account.Integrations[0]
 			repo.DelIntegration(account.AccountID, integration)
 			w.WriteHeader(http.StatusCreated)
 
@@ -150,8 +151,13 @@ func AccountIntegrationsHandler(repo repository.AccountIntegration) http.Handler
 
 }
 
-func UnsyncContacts(repo repository.ContactsRepo) http.HandlerFunc {
+func UnsyncContacts(repo repository.AccountContacts) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		err := repo.SetCurrentAccount()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		unsyncCon, err := repo.GetUnsyncCon()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -162,5 +168,41 @@ func UnsyncContacts(repo repository.ContactsRepo) http.HandlerFunc {
 			return
 		}
 		return
+	}
+}
+func SyncContacts(repo repository.AccountContacts) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := repo.SetCurrentAccount()
+		con, err := repo.GetSyncCon()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = json.NewEncoder(w).Encode(con)
+		if err != nil {
+			return
+		}
+		return
+	}
+}
+
+func UnisenderCheck(repo repository.AccountRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := repo.SetCurrentAccount()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		var bl bool
+		account, err := repo.GetAccount(config.CurrentAccount)
+		if account.UniKey != "" {
+			bl = true
+			fmt.Fprintf(w, "Аккаунт подключен к Unisender %v", bl)
+			return
+		} else {
+			bl = true
+			fmt.Fprintf(w, "Аккаунт не подключен к Unisender %v", bl)
+			return
+		}
 	}
 }

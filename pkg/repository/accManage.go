@@ -14,11 +14,11 @@ func (r *Repository) DelAccount(account types.Account) {
 }
 func (r *Repository) AddAuthData(accountID int) {
 	data := types.DataToAccess{
-		ClientID:     r.accounts[accountID].Contactss[0].ClientID,
-		ClientSecret: r.accounts[accountID].Contactss[0].SecretKey,
+		ClientID:     r.accounts[accountID].Integrations[0].ClientID,
+		ClientSecret: r.accounts[accountID].Integrations[0].SecretKey,
 		GrantType:    "authorization_code",
-		Code:         r.accounts[accountID].Contactss[0].AuthenticationCode,
-		RedirectUri:  r.accounts[accountID].Contactss[0].RedirectURL,
+		Code:         r.accounts[accountID].Integrations[0].AuthenticationCode,
+		RedirectUri:  r.accounts[accountID].Integrations[0].RedirectURL,
 	}
 	r.data[accountID] = data
 }
@@ -32,7 +32,7 @@ func (r *Repository) AddIntegration(accountID int, integration types.Integration
 	if !ok {
 		return
 	}
-	account.Contactss = append(account.Contactss, integration)
+	account.Integrations = append(account.Integrations, integration)
 	r.accounts[accountID] = account
 }
 func (r *Repository) DelIntegration(accountID int, integration types.Integration) {
@@ -40,11 +40,11 @@ func (r *Repository) DelIntegration(accountID int, integration types.Integration
 	if !ok {
 		return
 	}
-	for i, el := range account.Contactss {
+	for i, el := range account.Integrations {
 		if el == integration {
-			account.Contactss[i] = account.Contactss[len(account.Contactss)-1]
-			account.Contactss[len(account.Contactss)-1] = types.Integration{}
-			account.Contactss = account.Contactss[:len(account.Contactss)-1]
+			account.Integrations[i] = account.Integrations[len(account.Integrations)-1]
+			account.Integrations[len(account.Integrations)-1] = types.Integration{}
+			account.Integrations = account.Integrations[:len(account.Integrations)-1]
 		}
 	}
 	r.accounts[accountID] = account
@@ -55,9 +55,9 @@ func (r *Repository) UpdateIntegration(accountID int, integration types.Integrat
 	if !ok {
 		return
 	}
-	for i, el := range account.Contactss {
+	for i, el := range account.Integrations {
 		if el == integration {
-			account.Contactss[i] = replaced
+			account.Integrations[i] = replaced
 		}
 	}
 	r.accounts[accountID] = account
@@ -69,7 +69,7 @@ func (r *Repository) GetAccountIntegrations(accountID int) []types.Integration {
 	if !ok {
 		return nil
 	}
-	return account.Contactss
+	return account.Integrations
 }
 
 func (r *Repository) GetAllAccounts() ([]types.Account, error) {

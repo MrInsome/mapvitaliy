@@ -28,9 +28,9 @@ func FromAMOVidget(repo repository.AccountRefer) http.HandlerFunc {
 			},
 		}
 		account := types.Account{
-			AccountID: config.AccountID,
-			Contactss: integration,
-			Ref:       r.URL.Query().Get("referer"),
+			AccountID:    config.AccountID,
+			Integrations: integration,
+			Ref:          r.URL.Query().Get("referer"),
 		}
 		repo.AddAccount(account)
 	}
@@ -58,10 +58,10 @@ func HandleUnisenKey(repo repository.AccountAuth) http.HandlerFunc {
 		}
 		if id != config.CurrentAccount {
 			acc := types.Account{
-				AccountID: id,
-				UniKey:    r.FormValue("unisender_key"),
-				Contactss: currentAcc.Contactss,
-				Ref:       currentAcc.Ref,
+				AccountID:    id,
+				UniKey:       r.FormValue("unisender_key"),
+				Integrations: currentAcc.Integrations,
+				Ref:          currentAcc.Ref,
 			}
 			config.CurrentAccount = id
 			repo.AddAccount(acc)

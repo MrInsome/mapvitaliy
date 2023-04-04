@@ -18,11 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	repo, err = repo.NewBeanstalkConn()
-	if err != nil {
-		log.Fatal(err)
-	}
+	repo.NewBeanstalkConn()
 	rest.StartRESTServer(repo)
 	go OpenGRPC(repo)
 }

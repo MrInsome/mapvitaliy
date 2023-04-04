@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-func (r *Repository) NewBeanstalkConn() (*Repository, error) {
+func (r *Repository) NewBeanstalkConn() *Repository {
 	conn, err := beanstalk.Dial("tcp", "127.0.0.1:11300")
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	r.conn = conn
-	return r, nil
+	return r
 }
 
 func (r *Repository) Close() error {

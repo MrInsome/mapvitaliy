@@ -17,6 +17,11 @@ func ExportAmo(w http.ResponseWriter, repo repository.AccountRefer) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	err = RefreshAccessToken(repo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	ref := account.Ref
 	page := 1
 	for {

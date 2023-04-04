@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func ImportUni(apiKey string, repo repository.AccountContacts, w http.ResponseWriter) error {
+func ImportUni(apiKey string, repo repository.AccountAuth, w http.ResponseWriter) error {
 	err := repo.SetCurrentAccount()
 	if err != nil {
 		return err

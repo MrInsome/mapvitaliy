@@ -7,7 +7,7 @@ type Account struct {
 	UniKey       string        `json:"unisender_key"`
 	AccountID    int           `json:"account_id" gorm:"primaryKey:AccountID"`
 	Ref          string        `json:"referer"`
-	Contactss    []Integration `gorm:"foreignKey:AccountID"`
+	Integrations []Integration `gorm:"foreignKey:AccountID"`
 	Contacts     []Contacts    `gorm:"foreignKey:AccountID"`
 }
 

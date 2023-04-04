@@ -17,7 +17,7 @@ type AccountRepo interface {
 }
 
 type BStalkWH interface {
-	NewBeanstalkConn() (*Repository, error)
+	NewBeanstalkConn() *Repository
 	Close() error
 	Put(body []byte, priority uint32, delay, ttr time.Duration) (uint64, error)
 	Delete(id uint64) error
@@ -27,6 +27,7 @@ type BStalkWH interface {
 type ContactsRepo interface {
 	AddUnsyncCon(id int, contact types.UnsyncContacts)
 	GetUnsyncCon() ([]types.UnsyncContacts, error)
+	GetSyncCon() ([]types.Contacts, error)
 	AddContact(contact types.Contacts)
 	GetContact(conID int) (types.Contacts, error)
 	DelContact(account types.Account, contact types.Contacts)
@@ -70,6 +71,7 @@ type AccountRefer interface {
 type AccountAuth interface {
 	AccountRepo
 	AuthRepo
+	ContactsRepo
 }
 
 type AccountContacts interface {

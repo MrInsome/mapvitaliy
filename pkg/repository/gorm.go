@@ -39,7 +39,7 @@ func (r *Repository) SynchronizeDB(db *gorm.DB) {
 	db.Find(&account)
 	for i, el := range account {
 		db.Where("account_id = ?", el.AccountID).Find(&integrations)
-		account[i].Contactss = integrations
+		account[i].Integrations = integrations
 		db.Where("account_id = ?", el.AccountID).Find(&contacts)
 		account[i].Contacts = contacts
 		r.AddAccount(account[i])

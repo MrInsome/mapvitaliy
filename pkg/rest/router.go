@@ -17,16 +17,20 @@ func Router(repo *repository.Repository) *http.ServeMux {
 	WebhookProd := amoCRM.WebhookProducer(repo)
 	WebhookWork := amoCRM.WebhookWorker(repo)
 	Unsync := pkg.UnsyncContacts(repo)
+	Sync := pkg.SyncContacts(repo)
+	AccountHasUni := pkg.UnisenderCheck(repo)
 
 	router := http.NewServeMux()
 	router.Handle("/vidget", FromAmoVidget)
 	router.Handle("/vidget/unisender", UnisenKey)
 	router.Handle("/accounts", AccountsHandler)
 	router.Handle("/accounts/integrations", IntegrationsHandler)
+	router.Handle("/accounts/unsync", Unsync)
+	router.Handle("/accounts/sync", Sync)
 	router.Handle("/access_token", AuthHandler)
-	router.Handle("/request", ContactsSync)
+	router.Handle("/sync", ContactsSync)
 	router.Handle("/webhook", WebhookProd)
 	router.Handle("/webhookwork", WebhookWork)
-	router.Handle("/unsync", Unsync)
+	router.Handle("/acchasuni", AccountHasUni)
 	return router
 }
