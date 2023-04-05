@@ -3,6 +3,7 @@ package main
 import (
 	"apitraning/internal/config"
 	. "apitraning/pkg/api"
+	"apitraning/pkg/cli"
 	"apitraning/pkg/repository"
 	"apitraning/pkg/rest"
 	"log"
@@ -19,6 +20,7 @@ func main() {
 		log.Fatal(err)
 	}
 	repo.NewBeanstalkConn()
+	cli.Workerfunc(repo)
 	rest.StartRESTServer(repo)
 	go OpenGRPC(repo)
 }

@@ -54,46 +54,42 @@ func WebhookProducer(repo repository.BStalkWH) http.HandlerFunc {
 	}
 }
 
-func WebhookWorker(repo repository.AccountContacts) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		for {
-			id, body, err := repo.Reserve(5 * time.Second)
-			if body == nil {
-				fmt.Fprint(w, "Работа выполнена. В очереди пусто")
-				break
-			}
-			splited := strings.Split(string(body), " ")
-			accid, err := strconv.Atoi(splited[0])
-			conid, err := strconv.Atoi(splited[1])
-			contact := types.Contacts{
-				AccountID: accid,
-				ContactID: conid,
-			}
-			acc, err := repo.GetAccount(accid)
-			if err != nil {
-				fmt.Fprint(w, err)
-				return
-			}
+func WebhookWorker(repo repository.AccountContacts) {
+	for {
+		id, body, err := repo.Reserve(5 * time.Second)
+		if body == nil {
+			fmt.Println("Работа завершена, в очереди пусто")
+			break
+		}
+		splited := strings.Split(string(body), " ")
+		accid, err := strconv.Atoi(splited[0])
+		conid, err := strconv.Atoi(splited[1])
+		contact := types.Contacts{
+			AccountID: accid,
+			ContactID: conid,
+		}
+		acc, err := repo.GetAccount(accid)
+		if err != nil {
+			return
+		}
 
-			if strings.Contains(string(body), "add") {
-				contact = types.Contacts{Name: splited[3], Email: splited[2]}
-				acc.Contacts = append(acc.Contacts, contact)
-				repo.DBReturn().Where("account_id = ?", accid).Updates(&types.Contacts{})
-			}
-			if strings.Contains(string(body), "update") {
-				contact = types.Contacts{Name: splited[3], Email: splited[2]}
-				repo.AddContact(contact)
-				repo.DBReturn().Where("contactID = ?", conid).Updates(&types.Contacts{})
-			}
-			if strings.Contains(string(body), "delete") {
-				repo.DelContact(acc, contact)
-				repo.DBReturn().Where("contactID = ?", conid).Delete(&types.Contacts{})
-			}
-			err = repo.Delete(id)
-			if err != nil {
-				fmt.Errorf("ошибка воркера", id)
-				return
-			}
+		if strings.Contains(string(body), "add") {
+			contact = types.Contacts{Name: splited[3], Email: splited[2]}
+			acc.Contacts = append(acc.Contacts, contact)
+			repo.DBReturn().Where("account_id = ?", accid).Updates(&types.Contacts{})
+		}
+		if strings.Contains(string(body), "update") {
+			contact = types.Contacts{Name: splited[3], Email: splited[2]}
+			repo.AddContact(contact)
+			repo.DBReturn().Where("contactID = ?", conid).Updates(&types.Contacts{})
+		}
+		if strings.Contains(string(body), "delete") {
+			repo.DelContact(acc, contact)
+			repo.DBReturn().Where("contactID = ?", conid).Delete(&types.Contacts{})
+		}
+		err = repo.Delete(id)
+		if err != nil {
+			return
 		}
 	}
 }
