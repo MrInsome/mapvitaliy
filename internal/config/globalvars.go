@@ -17,6 +17,7 @@ var CurrentAccount int
 var Dsn string
 var SecretKey string
 var RedirectURL string
+var Cmd string
 
 // var UniToken = "6o1huty4e7se8tcmfcwr3fhcrx7cdh65aixjgsby"
 func CallVarsFromENV() error {
